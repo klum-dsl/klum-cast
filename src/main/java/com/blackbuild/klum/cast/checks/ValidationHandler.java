@@ -31,18 +31,36 @@ import org.codehaus.groovy.runtime.InvokerHelper;
 
 import java.lang.annotation.Annotation;
 import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
 import java.util.Optional;
-import java.util.stream.Stream;
+import java.util.stream.Collectors;
 
-public class CheckFactory {
+public class ValidationHandler {
+    public enum Status { VALIDATED }
 
-    public static Stream<KlumCastCheck.Error> validateAnnotation(AnnotatedNode target, AnnotationNode validatedAnnotation) {
-        return Arrays.stream(validatedAnnotation.getClassNode().getTypeClass().getAnnotations())
+    public static final String METADATA_KEY = ValidationHandler.class.getName();
+
+    public static boolean alreadyValidated(AnnotationNode annotationNode) {
+        return annotationNode.getNodeMetaData(METADATA_KEY) != null;
+    }
+
+    public static void setStatus(AnnotationNode annotationNode, Status status) {
+        annotationNode.setNodeMetaData(METADATA_KEY, status);
+    }
+
+    public static List<KlumCastCheck.Error> validateAnnotation(AnnotatedNode target, AnnotationNode validatedAnnotation) {
+        if (alreadyValidated(validatedAnnotation))
+            return Collections.emptyList();
+        List<KlumCastCheck.Error> errors = Arrays.stream(validatedAnnotation.getClassNode().getTypeClass().getAnnotations())
                 .flatMap(a -> RepeatableAnnotationsSupport.unwrapAnnotations(a, c -> c.isAnnotationPresent(KlumCastValidator.class)))
-                .map(CheckFactory::createFromAnnotation)
+                .map(ValidationHandler::createFromAnnotation)
                 .map(c -> c.check(validatedAnnotation, target))
                 .filter(Optional::isPresent)
-                .map(Optional::get);
+                .map(Optional::get)
+                .collect(Collectors.toList());
+        setStatus(validatedAnnotation, Status.VALIDATED);
+        return errors;
     }
 
     public static <T extends Annotation> KlumCastCheck<T> createFromAnnotation(T annotation) {

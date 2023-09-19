@@ -24,7 +24,7 @@
 package com.blackbuild.klum.cast.validation;
 
 import com.blackbuild.klum.cast.KlumCastValidated;
-import com.blackbuild.klum.cast.checks.CheckFactory;
+import com.blackbuild.klum.cast.checks.ValidationHandler;
 import org.codehaus.groovy.ast.*;
 import org.codehaus.groovy.control.CompilePhase;
 import org.codehaus.groovy.control.SourceUnit;
@@ -78,7 +78,7 @@ public class KlumCastTransformation extends AbstractASTTransformation implements
     protected void visitAnnotations(AnnotatedNode node) {
         for (AnnotationNode annotation : node.getAnnotations())
             if (isKlumCastAnnotation(annotation))
-                CheckFactory.validateAnnotation(node, annotation)
+                ValidationHandler.validateAnnotation(node, annotation)
                         .forEach(e -> addError(e.message, e.node));
     }
 
