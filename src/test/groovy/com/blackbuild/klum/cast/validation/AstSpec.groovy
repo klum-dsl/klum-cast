@@ -80,7 +80,6 @@ import org.codehaus.groovy.transform.GroovyASTTransformationClass
 import java.lang.annotation.*
 
 @Retention(RetentionPolicy.RUNTIME)
-@GroovyASTTransformationClass("com.blackbuild.klum.cast.validation.KlumCastTransformation")
 @KlumCastValidated
 $code
 """

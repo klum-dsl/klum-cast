@@ -42,13 +42,10 @@ public class KlumCastTransformation extends AbstractASTTransformation implements
 
     static final ClassNode KLUM_CAST_VALIDATED = make(KlumCastValidated.class);
 
-    AnnotatedNode target;
-
     @Override
     public void visit(ASTNode[] nodes, SourceUnit source) {
-        init(nodes, source);
-        target = (AnnotatedNode) nodes[1];
-        visit(target);
+        this.sourceUnit = source;
+        source.getAST().getClasses().forEach(this::visit);
     }
 
     public void visit(AnnotatedNode node) {

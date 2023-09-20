@@ -121,7 +121,6 @@ import com.blackbuild.klum.cast.checks.*
 @Retention(RetentionPolicy.RUNTIME)
 @KlumCastValidated
 @MyAnnotation
-@GroovyASTTransformationClass("com.blackbuild.klum.cast.validation.KlumCastTransformation")
 @interface MySchemaAnnotation {}
 '''
         createClass '''

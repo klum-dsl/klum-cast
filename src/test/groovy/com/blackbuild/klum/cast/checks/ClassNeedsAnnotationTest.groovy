@@ -36,12 +36,10 @@ import com.blackbuild.klum.cast.checks.*
 import org.codehaus.groovy.transform.GroovyASTTransformationClass
 import java.lang.annotation.*
 
-@GroovyASTTransformationClass("com.blackbuild.klum.cast.validation.KlumCastTransformation")
 @Retention(RetentionPolicy.RUNTIME)
 @Target(ElementType.TYPE)
 @interface ClassAnnotation {}
 
-@GroovyASTTransformationClass("com.blackbuild.klum.cast.validation.KlumCastTransformation")
 @Retention(RetentionPolicy.RUNTIME)
 @Target(ElementType.FIELD)
 @KlumCastValidated
