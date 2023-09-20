@@ -63,6 +63,11 @@ abstract class AstSpec extends Specification {
         currentTest = null
     }
 
+    void newClassLoader() {
+        loader = new GroovyClassLoader(Thread.currentThread().getContextClassLoader(), compilerConfiguration)
+        Thread.currentThread().contextClassLoader = loader
+    }
+
     Class<?> createClass(@Language("groovy") String code) {
         return loader.parseClass(code)
     }

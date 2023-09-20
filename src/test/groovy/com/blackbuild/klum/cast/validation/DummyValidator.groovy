@@ -36,14 +36,14 @@ import java.lang.annotation.Target
 
 @Target(ElementType.ANNOTATION_TYPE)
 @Retention(RetentionPolicy.RUNTIME)
-@KlumCastValidator(Checker)
+@KlumCastValidator(".Check")
 @interface DummyValidator {
 
     Type value()
 
     enum Type { PASS, FAIL }
 
-    static class Checker extends KlumCastCheck<DummyValidator> {
+    static class Check extends KlumCastCheck<DummyValidator> {
 
         static List<Tuple2<AnnotatedNode, AnnotationNode>> runs = []
 

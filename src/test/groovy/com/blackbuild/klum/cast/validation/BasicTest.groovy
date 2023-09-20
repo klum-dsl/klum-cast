@@ -21,6 +21,7 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
+//file:noinspection GrPackage
 package com.blackbuild.klum.cast.validation
 
 import org.codehaus.groovy.control.MultipleCompilationErrorsException
@@ -29,7 +30,7 @@ class BasicTest extends AstSpec {
 
     @Override
     def cleanup() {
-        DummyValidator.Checker.reset()
+        DummyValidator.Check.reset()
     }
 
     def "validator is executed"() {
@@ -41,7 +42,7 @@ class MyClass {}
 '''
 
         then:
-        DummyValidator.Checker.runs.size() == 1
+        DummyValidator.Check.runs.size() == 1
     }
 
     def "validator fails"() {
@@ -54,7 +55,83 @@ class MyClass {}
 
         then:
         thrown(MultipleCompilationErrorsException)
-        DummyValidator.Checker.runs.size() == 1
+        DummyValidator.Check.runs.size() == 1
 
+    }
+
+    def "implementation is in different classloader than annotation"() {
+        given:
+        createClass '''
+package annotations 
+
+import java.lang.annotation.*
+import com.blackbuild.klum.cast.*
+import com.blackbuild.klum.cast.checks.*
+
+@Target(ElementType.ANNOTATION_TYPE)
+@Retention(RetentionPolicy.RUNTIME)
+@KlumCastValidator("checks.MyValidator")
+@interface MyAnnotation {
+}
+'''
+        newClassLoader()
+
+        createClass '''
+//file:noinspection UnnecessaryQualifiedReference
+package checks
+
+import annotations.MyAnnotation
+import com.blackbuild.klum.cast.*
+import com.blackbuild.klum.cast.checks.*
+import org.codehaus.groovy.ast.*
+import com.blackbuild.klum.cast.validation.*
+
+class MyValidator extends KlumCastCheck<MyAnnotation> {
+    @Override
+    protected void doCheck(AnnotationNode annotationToCheck, AnnotatedNode target) {
+        AstSpec.currentTest.valueHolder["executed"] = true
+    }
+}
+'''
+        when:
+        loader.parent.loadClass("annotations.MyAnnotation")
+
+        then:
+        noExceptionThrown()
+
+        when:
+        loader.parent.loadClass("checks.MyValidator")
+
+        then:
+        thrown(ClassNotFoundException)
+
+        when:
+        newClassLoader()
+        createClass '''
+package schema
+
+import annotations.MyAnnotation
+import org.codehaus.groovy.transform.GroovyASTTransformationClass
+
+import java.lang.annotation.*
+import com.blackbuild.klum.cast.*
+import com.blackbuild.klum.cast.checks.*
+
+@Target(ElementType.TYPE)
+@Retention(RetentionPolicy.RUNTIME)
+@KlumCastValidated
+@MyAnnotation
+@GroovyASTTransformationClass("com.blackbuild.klum.cast.validation.KlumCastTransformation")
+@interface MySchemaAnnotation {}
+'''
+        createClass '''
+package schema
+
+@MySchemaAnnotation
+class MyClass {}
+'''
+        then:
+        noExceptionThrown()
+        valueHolder["executed"] == true
     }
 }

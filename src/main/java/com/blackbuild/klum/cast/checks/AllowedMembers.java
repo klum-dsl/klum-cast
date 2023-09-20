@@ -45,7 +45,7 @@ import java.util.stream.Collectors;
 @Target(ElementType.ANNOTATION_TYPE)
 @Retention(RetentionPolicy.RUNTIME)
 @Repeatable(AllowedMembers.List.class)
-@KlumCastValidator(AllowedMembers.Check.class)
+@KlumCastValidator(".Check")
 public @interface AllowedMembers {
     ElementType[] targets();
 
