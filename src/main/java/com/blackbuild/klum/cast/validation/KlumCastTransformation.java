@@ -24,6 +24,7 @@
 package com.blackbuild.klum.cast.validation;
 
 import com.blackbuild.klum.cast.KlumCastValidated;
+import com.blackbuild.klum.cast.KlumCastValidator;
 import com.blackbuild.klum.cast.checks.ValidationHandler;
 import org.codehaus.groovy.ast.*;
 import org.codehaus.groovy.control.CompilePhase;
@@ -41,6 +42,7 @@ import static org.codehaus.groovy.ast.ClassHelper.make;
 public class KlumCastTransformation extends AbstractASTTransformation implements GroovyClassVisitor {
 
     static final ClassNode KLUM_CAST_VALIDATED = make(KlumCastValidated.class);
+    static final ClassNode KLUM_CAST_VALIDATOR = make(KlumCastValidator.class);
 
     @Override
     public void visit(ASTNode[] nodes, SourceUnit source) {
@@ -75,13 +77,14 @@ public class KlumCastTransformation extends AbstractASTTransformation implements
     protected void visitAnnotations(AnnotatedNode node) {
         for (AnnotationNode annotation : node.getAnnotations())
             if (isKlumCastAnnotation(annotation))
-                ValidationHandler.validateAnnotation(node, annotation)
-                        .forEach(e -> addError(e.message, e.node));
+                ValidationHandler.validateAnnotation(node, annotation).forEach(e -> addError(e.message, e.node));
     }
 
     private boolean isKlumCastAnnotation(AnnotationNode annotation) {
         if (annotation.isBuiltIn()) return false;
-        return !annotation.getClassNode().getAnnotations(KLUM_CAST_VALIDATED).isEmpty();
+        return annotation.getClassNode().getAnnotations().stream()
+                .map(AnnotationNode::getClassNode)
+                .anyMatch(a -> a.equals(KLUM_CAST_VALIDATED));
     }
 
     @Override

@@ -21,22 +21,34 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.blackbuild.klum.cast;
+package com.blackbuild.klum.cast.checks;
 
-import java.lang.annotation.*;
+import org.codehaus.groovy.ast.ASTNode;
+import org.codehaus.groovy.ast.AnnotatedNode;
+import org.codehaus.groovy.ast.AnnotationNode;
 
-/**
- * Meta-Annotation that defines the validator to validate the usage of the annotated annotation.
- */
-@Target(ElementType.ANNOTATION_TYPE)
-@Retention(RetentionPolicy.RUNTIME)
-@Repeatable(KlumCastValidator.List.class)
-public @interface KlumCastValidator {
-    String value();
+import java.util.Optional;
 
-    @Target(ElementType.ANNOTATION_TYPE)
-    @Retention(RetentionPolicy.RUNTIME)
-    @interface List {
-        KlumCastValidator[] value();
+public abstract class KlumCastDirectCheck {
+
+    public Optional<Error> check(AnnotationNode annotationToCheck, AnnotatedNode target) {
+        try {
+            doCheck(annotationToCheck, target);
+            return Optional.empty();
+        } catch (Exception e) {
+            return Optional.of(new Error(e.getMessage(), annotationToCheck));
+        }
+    }
+
+    protected abstract void doCheck(AnnotationNode annotationToCheck, AnnotatedNode target);
+
+    public static class Error {
+        public final String message;
+        public final ASTNode node;
+
+        public Error(String message, ASTNode node) {
+            this.message = message;
+            this.node = node;
+        }
     }
 }

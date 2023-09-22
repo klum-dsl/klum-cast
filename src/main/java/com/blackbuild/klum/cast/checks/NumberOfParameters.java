@@ -39,7 +39,7 @@ import java.lang.annotation.Target;
 public @interface NumberOfParameters {
     int value();
 
-    class Check extends KlumCastCheck<NumberOfParameters> {
+    class Check extends KlumCastAnnotationCheck<NumberOfParameters> {
 
         @Override
         protected void doCheck(AnnotationNode annotationToCheck, AnnotatedNode target) {

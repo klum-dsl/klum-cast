@@ -24,10 +24,10 @@
 package com.blackbuild.klum.cast.checks;
 
 import com.blackbuild.klum.cast.KlumCastValidator;
+import com.blackbuild.klum.cast.helpers.AstSupport;
 import com.blackbuild.klum.cast.helpers.RepeatableAnnotationsSupport;
 import org.codehaus.groovy.ast.AnnotatedNode;
 import org.codehaus.groovy.ast.AnnotationNode;
-import org.codehaus.groovy.ast.ClassNode;
 import org.codehaus.groovy.runtime.InvokerHelper;
 
 import java.lang.annotation.Annotation;
@@ -50,16 +50,15 @@ public class ValidationHandler {
         annotationNode.setNodeMetaData(METADATA_KEY, status);
     }
 
-    public static List<KlumCastCheck.Error> validateAnnotation(AnnotatedNode target, AnnotationNode validatedAnnotation) {
+    public static List<KlumCastAnnotationCheck.Error> validateAnnotation(AnnotatedNode target, AnnotationNode validatedAnnotation) {
         if (alreadyValidated(validatedAnnotation))
             return Collections.emptyList();
-        List<KlumCastCheck.Error> errors;
+        List<KlumCastAnnotationCheck.Error> errors;
         ClassLoader current = Thread.currentThread().getContextClassLoader();
         try {
-            ClassNode owningClass = target instanceof ClassNode ? (ClassNode) target : target.getDeclaringClass();
-            Thread.currentThread().setContextClassLoader(owningClass.getModule().getContext().getClassLoader());
+            Thread.currentThread().setContextClassLoader(AstSupport.getTargetClassLoader(target));
             errors = Arrays.stream(validatedAnnotation.getClassNode().getTypeClass().getAnnotations())
-                    .flatMap(a -> RepeatableAnnotationsSupport.unwrapAnnotations(a, c -> c.isAnnotationPresent(KlumCastValidator.class)))
+                    .flatMap(a -> RepeatableAnnotationsSupport.unwrapAnnotations(a, c -> c.isAnnotationPresent(KlumCastValidator.class) || KlumCastValidator.class.isAssignableFrom(c)))
                     .map(ValidationHandler::createFromAnnotation)
                     .map(c -> c.check(validatedAnnotation, target))
                     .filter(Optional::isPresent)
@@ -72,27 +71,31 @@ public class ValidationHandler {
         return errors;
     }
 
-    public static <T extends Annotation> KlumCastCheck<T> createFromAnnotation(T annotation) {
-        KlumCastValidator validator = annotation.annotationType().getAnnotation(KlumCastValidator.class);
+    public static <T extends Annotation> KlumCastDirectCheck createFromAnnotation(T annotation) {
+        KlumCastValidator validator = annotation instanceof KlumCastValidator ? (KlumCastValidator) annotation : annotation.annotationType().getAnnotation(KlumCastValidator.class);
         if (validator == null)
             throw new IllegalStateException("Annotation " + annotation.annotationType().getName() + " is not annotated with @KlumCastValidator.");
         try {
             Class<?> type;
             if (validator.value().startsWith(".")) {
+                if (annotation instanceof KlumCastValidator)
+                    throw new IllegalStateException("Direct validators need to be specified with their full class name, not with a relative name.");
                 type = Arrays.stream(annotation.annotationType().getDeclaredClasses())
                         .filter(c -> c.getSimpleName().equals(validator.value().substring(1)))
-                        .filter(KlumCastCheck.class::isAssignableFrom)
+                        .filter(KlumCastAnnotationCheck.class::isAssignableFrom)
                         .findFirst()
-                        .orElseThrow(() -> new IllegalStateException("Annotation " + annotation.annotationType().getName() + " does not contain a KlumCastCheck named " + validator.value().substring(1) +  "."));
+                        .orElseThrow(() -> new IllegalStateException("Annotation " + annotation.annotationType().getName() + " does not contain a KlumCastAnnotationCheck named " + validator.value().substring(1) +  "."));
             } else {
                 type = Class.forName(validator.value(), true, Thread.currentThread().getContextClassLoader());
             }
-            if (!KlumCastCheck.class.isAssignableFrom(type))
-                throw new IllegalStateException("Class " + validator.value() + " is not a KlumCastCheck.");
-            KlumCastCheck<T> check = (KlumCastCheck<T>) InvokerHelper.invokeNoArgumentsConstructorOf(type);
-            return check.setValidatorAnnotation(annotation);
+            if (!KlumCastDirectCheck.class.isAssignableFrom(type))
+                throw new IllegalStateException("Class " + validator.value() + " is not a KlumCastDirectCheck.");
+            KlumCastDirectCheck check = (KlumCastDirectCheck) InvokerHelper.invokeNoArgumentsConstructorOf(type);
+            if (check instanceof KlumCastAnnotationCheck)
+                ((KlumCastAnnotationCheck<T>) check).setValidatorAnnotation(annotation);
+            return check;
         } catch (ClassNotFoundException e) {
-            throw new IllegalStateException("Could not create instance of KlumCastCheck " + validator.value(), e);
+            throw new IllegalStateException("Could not create instance of KlumCastAnnotationCheck " + validator.value(), e);
         }
 
 

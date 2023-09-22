@@ -21,22 +21,23 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.blackbuild.klum.cast;
+package com.blackbuild.klum.cast.checks;
 
-import java.lang.annotation.*;
+import java.lang.annotation.Annotation;
 
 /**
- * Meta-Annotation that defines the validator to validate the usage of the annotated annotation.
+ * This abstract class represents a KlumCastAnnotationCheck, which is responsible for validating annotations of a certain type.
+ * The type of the annotation must extend the Annotation class. Subclasses must implement the doCheck method to
+ * define the validation logic.
  */
-@Target(ElementType.ANNOTATION_TYPE)
-@Retention(RetentionPolicy.RUNTIME)
-@Repeatable(KlumCastValidator.List.class)
-public @interface KlumCastValidator {
-    String value();
+public abstract class KlumCastAnnotationCheck<T extends Annotation> extends KlumCastDirectCheck {
 
-    @Target(ElementType.ANNOTATION_TYPE)
-    @Retention(RetentionPolicy.RUNTIME)
-    @interface List {
-        KlumCastValidator[] value();
+    protected T validatorAnnotation;
+
+    public KlumCastAnnotationCheck<T> setValidatorAnnotation(T validatorAnnotation) {
+        this.validatorAnnotation = validatorAnnotation;
+        return this;
     }
+
+
 }

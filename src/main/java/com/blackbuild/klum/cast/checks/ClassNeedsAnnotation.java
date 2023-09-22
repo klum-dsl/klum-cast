@@ -40,7 +40,7 @@ public @interface ClassNeedsAnnotation {
     Class<? extends Annotation> value();
     String message() default "Annotations annotated with %s are only valid on classes annotated with %s.";
 
-    class Check extends KlumCastCheck<ClassNeedsAnnotation> {
+    class Check extends KlumCastAnnotationCheck<ClassNeedsAnnotation> {
 
         @Override
         protected void doCheck(AnnotationNode annotationToCheck, AnnotatedNode target) {

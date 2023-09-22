@@ -28,11 +28,6 @@ import org.codehaus.groovy.control.MultipleCompilationErrorsException
 
 class BasicTest extends AstSpec {
 
-    @Override
-    def cleanup() {
-        DummyValidator.Check.reset()
-    }
-
     def "validator is executed"() {
         when:
         createClass '''
@@ -42,7 +37,7 @@ class MyClass {}
 '''
 
         then:
-        DummyValidator.Check.runs.size() == 1
+        valueHolder.runs.size() == 1
     }
 
     def "validator fails"() {
@@ -55,8 +50,7 @@ class MyClass {}
 
         then:
         thrown(MultipleCompilationErrorsException)
-        DummyValidator.Check.runs.size() == 1
-
+        valueHolder.runs.size() == 1
     }
 
     def "implementation is in different classloader than annotation"() {
@@ -81,12 +75,11 @@ import com.blackbuild.klum.cast.checks.*
 package checks
 
 import annotations.MyAnnotation
-import com.blackbuild.klum.cast.*
 import com.blackbuild.klum.cast.checks.*
 import org.codehaus.groovy.ast.*
 import com.blackbuild.klum.cast.validation.*
 
-class MyValidator extends KlumCastCheck<MyAnnotation> {
+class MyValidator extends KlumCastAnnotationCheck<MyAnnotation> {
     @Override
     protected void doCheck(AnnotationNode annotationToCheck, AnnotatedNode target) {
         AstSpec.currentTest.valueHolder["executed"] = true
@@ -131,6 +124,34 @@ class MyClass {}
 '''
         then:
         noExceptionThrown()
-        valueHolder["executed"] == true
+        valueHolder.executed == true
+    }
+
+    def "direct validator passes"() {
+        when:
+        createClass '''
+import com.blackbuild.klum.cast.validation.*
+
+@DummyDirectValidated("PASS")
+class MyClass {}
+'''
+
+        then:
+        noExceptionThrown()
+        valueHolder.runs.size() == 1
+    }
+
+    def "direct validator fails"() {
+        when:
+        createClass '''
+import com.blackbuild.klum.cast.validation.*
+
+@DummyDirectValidated("FAIL")
+class MyClass {}
+'''
+
+        then:
+        thrown(MultipleCompilationErrorsException)
+        valueHolder.runs.size() == 1
     }
 }

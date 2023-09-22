@@ -53,12 +53,12 @@ public @interface AllowedMembers {
 
     boolean invert() default false;
 
-    class Check extends KlumCastCheck<AllowedMembers> {
+    class Check extends KlumCastAnnotationCheck<AllowedMembers> {
 
         EnumSet<ElementType> targets;
 
         @Override
-        public KlumCastCheck<AllowedMembers> setValidatorAnnotation(AllowedMembers validatorAnnotation) {
+        public KlumCastAnnotationCheck<AllowedMembers> setValidatorAnnotation(AllowedMembers validatorAnnotation) {
             super.setValidatorAnnotation(validatorAnnotation);
             targets = EnumSet.copyOf(Arrays.asList(validatorAnnotation.targets()));
             return this;

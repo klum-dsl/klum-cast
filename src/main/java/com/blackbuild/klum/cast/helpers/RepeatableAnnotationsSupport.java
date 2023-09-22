@@ -50,7 +50,7 @@ public class RepeatableAnnotationsSupport {
             return Stream.of(annotation); // if it is a validator, it would handle inner annotations itself
 
         Optional<Method> values = getSingleValuesMemberMethod(annotation);
-        if (!values.isPresent())
+        if (values.isEmpty())
             return Stream.empty();
 
         Class<?> returnType = values.get().getReturnType();
