@@ -1,2 +1,3 @@
-rootProject.name = 'klum-cast'
-
+rootProject.name = 'klum-cast-root'
+include 'klum-cast-annotations'
+include 'klum-cast-compile'

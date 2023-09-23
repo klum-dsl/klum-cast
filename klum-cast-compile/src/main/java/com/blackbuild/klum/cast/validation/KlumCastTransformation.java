@@ -25,7 +25,6 @@ package com.blackbuild.klum.cast.validation;
 
 import com.blackbuild.klum.cast.KlumCastValidated;
 import com.blackbuild.klum.cast.KlumCastValidator;
-import com.blackbuild.klum.cast.checks.ValidationHandler;
 import org.codehaus.groovy.ast.*;
 import org.codehaus.groovy.control.CompilePhase;
 import org.codehaus.groovy.control.SourceUnit;

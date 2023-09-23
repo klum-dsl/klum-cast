@@ -21,11 +21,11 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.blackbuild.klum.cast.checks;
+package com.blackbuild.klum.cast.validation;
 
 import com.blackbuild.klum.cast.KlumCastValidator;
-import com.blackbuild.klum.cast.helpers.AstSupport;
-import com.blackbuild.klum.cast.helpers.RepeatableAnnotationsSupport;
+import com.blackbuild.klum.cast.checks.KlumCastAnnotationCheck;
+import com.blackbuild.klum.cast.checks.KlumCastDirectCheck;
 import org.codehaus.groovy.ast.AnnotatedNode;
 import org.codehaus.groovy.ast.AnnotationNode;
 import org.codehaus.groovy.runtime.InvokerHelper;
@@ -50,10 +50,10 @@ public class ValidationHandler {
         annotationNode.setNodeMetaData(METADATA_KEY, status);
     }
 
-    public static List<KlumCastAnnotationCheck.Error> validateAnnotation(AnnotatedNode target, AnnotationNode validatedAnnotation) {
+    public static List<KlumCastDirectCheck.Error> validateAnnotation(AnnotatedNode target, AnnotationNode validatedAnnotation) {
         if (alreadyValidated(validatedAnnotation))
             return Collections.emptyList();
-        List<KlumCastAnnotationCheck.Error> errors;
+        List<KlumCastDirectCheck.Error> errors;
         ClassLoader current = Thread.currentThread().getContextClassLoader();
         try {
             Thread.currentThread().setContextClassLoader(AstSupport.getTargetClassLoader(target));
