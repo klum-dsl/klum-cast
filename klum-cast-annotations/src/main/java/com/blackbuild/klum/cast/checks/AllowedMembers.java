@@ -66,7 +66,6 @@ public @interface AllowedMembers {
 
         @Override
         protected void doCheck(AnnotationNode annotationToCheck, AnnotatedNode target) {
-            if (!isValidFor(target)) return;
             if (validatorAnnotation.invert())
                 assertAnnotationHasNoMembersFrom(annotationToCheck, target);
             else
@@ -105,7 +104,7 @@ public @interface AllowedMembers {
             ));
         }
 
-        private boolean isValidFor(AnnotatedNode target) {
+        protected boolean isValidFor(AnnotatedNode target) {
             if (target instanceof ClassNode)
                 return targets.contains(ElementType.TYPE);
             if (target instanceof org.codehaus.groovy.ast.ConstructorNode)

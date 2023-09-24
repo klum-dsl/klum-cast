@@ -24,6 +24,7 @@
 package com.blackbuild.klum.cast.validation
 
 import org.codehaus.groovy.control.CompilerConfiguration
+import org.codehaus.groovy.control.customizers.ImportCustomizer
 import org.intellij.lang.annotations.Language
 import org.junit.Rule
 import org.junit.rules.TestName
@@ -41,10 +42,18 @@ abstract class AstSpec extends Specification {
     CompilerConfiguration compilerConfiguration
 
     Map<String, ?> valueHolder = [:]
+    private ImportCustomizer importCustomizer
 
     def setup() {
         oldLoader = Thread.currentThread().contextClassLoader
         compilerConfiguration = new CompilerConfiguration()
+        importCustomizer = new ImportCustomizer()
+        this.importCustomizer.addStarImports(
+                "com.blackbuild.klum.cast",
+                "com.blackbuild.klum.cast.checks",
+                "java.lang.annotation"
+        )
+        compilerConfiguration.addCompilationCustomizers(this.importCustomizer)
         loader = new GroovyClassLoader(Thread.currentThread().getContextClassLoader(), compilerConfiguration)
         Thread.currentThread().contextClassLoader = loader
         def outputDirectory = new File("build/test-classes/${getClass().simpleName}/$safeFilename")

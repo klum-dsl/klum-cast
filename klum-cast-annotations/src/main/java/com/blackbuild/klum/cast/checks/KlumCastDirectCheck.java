@@ -33,11 +33,16 @@ public abstract class KlumCastDirectCheck {
 
     public Optional<Error> check(AnnotationNode annotationToCheck, AnnotatedNode target) {
         try {
-            doCheck(annotationToCheck, target);
+            if (isValidFor(target))
+                doCheck(annotationToCheck, target);
             return Optional.empty();
         } catch (Exception e) {
             return Optional.of(new Error(e.getMessage(), annotationToCheck));
         }
+    }
+
+    protected boolean isValidFor(AnnotatedNode target) {
+        return true;
     }
 
     protected abstract void doCheck(AnnotationNode annotationToCheck, AnnotatedNode target);
