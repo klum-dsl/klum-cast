@@ -107,6 +107,4 @@ public class KlumCastTransformation extends AbstractASTTransformation implements
     public void visitProperty(PropertyNode node) {
         visitAnnotations(node);
     }
-
-
 }

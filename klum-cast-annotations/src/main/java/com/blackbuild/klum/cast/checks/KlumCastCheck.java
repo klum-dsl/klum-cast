@@ -23,31 +23,49 @@
  */
 package com.blackbuild.klum.cast.checks;
 
-import com.blackbuild.klum.cast.KlumCastValidator;
+import org.codehaus.groovy.ast.ASTNode;
 import org.codehaus.groovy.ast.AnnotatedNode;
 import org.codehaus.groovy.ast.AnnotationNode;
-import org.codehaus.groovy.ast.MethodNode;
 
-import java.lang.annotation.ElementType;
-import java.lang.annotation.Retention;
-import java.lang.annotation.RetentionPolicy;
-import java.lang.annotation.Target;
+import java.lang.annotation.Annotation;
+import java.util.Optional;
 
-@Target(ElementType.ANNOTATION_TYPE)
-@Retention(RetentionPolicy.RUNTIME)
-@KlumCastValidator(".Check")
-public @interface NumberOfParameters {
-    int value();
+public abstract class KlumCastCheck<T extends Annotation> {
 
-    class Check extends KlumCastCheck<NumberOfParameters> {
+    protected T validatorAnnotation;
+    protected String memberName;
 
-        @Override
-        protected void doCheck(AnnotationNode annotationToCheck, AnnotatedNode target) {
-            if (target instanceof MethodNode) {
-                MethodNode methodNode = (MethodNode) target;
-                if (methodNode.getParameters().length != validatorAnnotation.value())
-                    throw new RuntimeException("Method " + methodNode.getName() + " must have " + validatorAnnotation.value() + " parameters.");
-            }
+    public void setValidatorAnnotation(T validatorAnnotation) {
+        this.validatorAnnotation = validatorAnnotation;
+    }
+
+    public void setMemberName(String memberName) {
+        this.memberName = memberName;
+    }
+
+    public Optional<Error> check(AnnotationNode annotationToCheck, AnnotatedNode target) {
+        try {
+            if (isValidFor(target))
+                doCheck(annotationToCheck, target);
+            return Optional.empty();
+        } catch (Exception e) {
+            return Optional.of(new Error(e.getMessage(), annotationToCheck));
+        }
+    }
+
+    protected boolean isValidFor(AnnotatedNode target) {
+        return true;
+    }
+
+    protected abstract void doCheck(AnnotationNode annotationToCheck, AnnotatedNode target);
+
+    public static class Error {
+        public final String message;
+        public final ASTNode node;
+
+        public Error(String message, ASTNode node) {
+            this.message = message;
+            this.node = node;
         }
     }
 }

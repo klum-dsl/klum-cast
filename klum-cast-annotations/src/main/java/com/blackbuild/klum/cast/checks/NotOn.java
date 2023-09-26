@@ -23,37 +23,16 @@
  */
 package com.blackbuild.klum.cast.checks;
 
-import org.codehaus.groovy.ast.ASTNode;
-import org.codehaus.groovy.ast.AnnotatedNode;
-import org.codehaus.groovy.ast.AnnotationNode;
+import com.blackbuild.klum.cast.KlumCastValidator;
 
-import java.util.Optional;
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
 
-public abstract class KlumCastDirectCheck {
-
-    public Optional<Error> check(AnnotationNode annotationToCheck, AnnotatedNode target) {
-        try {
-            if (isValidFor(target))
-                doCheck(annotationToCheck, target);
-            return Optional.empty();
-        } catch (Exception e) {
-            return Optional.of(new Error(e.getMessage(), annotationToCheck));
-        }
-    }
-
-    protected boolean isValidFor(AnnotatedNode target) {
-        return true;
-    }
-
-    protected abstract void doCheck(AnnotationNode annotationToCheck, AnnotatedNode target);
-
-    public static class Error {
-        public final String message;
-        public final ASTNode node;
-
-        public Error(String message, ASTNode node) {
-            this.message = message;
-            this.node = node;
-        }
-    }
+@Target(ElementType.METHOD)
+@Retention(RetentionPolicy.RUNTIME)
+@KlumCastValidator("com.blackbuild.klum.cast.checks.impl.MemberTargetFilter")
+public @interface NotOn {
+    ElementType[] value();
 }

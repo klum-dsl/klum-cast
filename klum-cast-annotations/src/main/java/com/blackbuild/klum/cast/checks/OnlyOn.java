@@ -23,21 +23,16 @@
  */
 package com.blackbuild.klum.cast.checks;
 
-import java.lang.annotation.Annotation;
+import com.blackbuild.klum.cast.KlumCastValidator;
 
-/**
- * This abstract class represents a KlumCastAnnotationCheck, which is responsible for validating annotations of a certain type.
- * The type of the annotation must extend the Annotation class. Subclasses must implement the doCheck method to
- * define the validation logic.
- */
-public abstract class KlumCastAnnotationCheck<T extends Annotation> extends KlumCastDirectCheck {
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
 
-    protected T validatorAnnotation;
-
-    public KlumCastAnnotationCheck<T> setValidatorAnnotation(T validatorAnnotation) {
-        this.validatorAnnotation = validatorAnnotation;
-        return this;
-    }
-
-
+@Target(ElementType.METHOD)
+@Retention(RetentionPolicy.RUNTIME)
+@KlumCastValidator("com.blackbuild.klum.cast.checks.impl.MemberTargetFilter")
+public @interface OnlyOn {
+    ElementType[] value();
 }

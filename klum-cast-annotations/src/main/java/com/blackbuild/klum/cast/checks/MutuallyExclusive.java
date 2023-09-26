@@ -45,7 +45,7 @@ import java.util.stream.Collectors;
 public @interface MutuallyExclusive {
     String[] value();
 
-    class Check extends KlumCastAnnotationCheck<MutuallyExclusive> {
+    class Check extends KlumCastCheck<MutuallyExclusive> {
         @Override
         protected void doCheck(final AnnotationNode annotationToCheck, final AnnotatedNode target) {
             Collection<String> matchingMembers = Arrays.stream(validatorAnnotation.value()).filter(m -> annotationToCheck.getMembers().containsKey(m)).collect(Collectors.toList());

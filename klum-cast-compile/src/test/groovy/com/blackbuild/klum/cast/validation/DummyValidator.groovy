@@ -23,9 +23,8 @@
  */
 package com.blackbuild.klum.cast.validation
 
-
 import com.blackbuild.klum.cast.KlumCastValidator
-import com.blackbuild.klum.cast.checks.KlumCastAnnotationCheck
+import com.blackbuild.klum.cast.checks.KlumCastCheck
 import org.codehaus.groovy.ast.AnnotatedNode
 import org.codehaus.groovy.ast.AnnotationNode
 
@@ -43,7 +42,7 @@ import java.lang.annotation.Target
 
     enum Type { PASS, FAIL }
 
-    static class Check extends KlumCastAnnotationCheck<DummyValidator> {
+    static class Check extends KlumCastCheck<DummyValidator> {
 
         @Override
         protected void doCheck(AnnotationNode annotationToCheck, AnnotatedNode target) {

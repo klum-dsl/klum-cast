@@ -24,13 +24,36 @@
 package com.blackbuild.klum.cast.validation;
 
 import groovy.lang.GroovyClassLoader;
-import org.codehaus.groovy.ast.AnnotatedNode;
-import org.codehaus.groovy.ast.ClassNode;
+import org.codehaus.groovy.ast.*;
+
+import java.lang.annotation.ElementType;
+import java.util.Map;
 
 public class AstSupport {
 
+    private final static Map<ElementType, Class<? extends AnnotatedNode>> elementTypeToNodeType = Map.of(
+            ElementType.TYPE, ClassNode.class,
+            ElementType.FIELD, FieldNode.class,
+            ElementType.METHOD, MethodNode.class,
+            ElementType.PARAMETER, Parameter.class,
+            ElementType.CONSTRUCTOR, ConstructorNode.class,
+            //ElementType.ANNOTATION_TYPE, ClassNode.class,
+            ElementType.PACKAGE, PackageNode.class
+            // missing elements are not supported by Groovy 2.4
+    );
+
     private AstSupport() {}
 
+    public static ElementType getElementType(Class<? extends AnnotatedNode> nodeType) {
+        if (nodeType.isAnnotation())
+            return ElementType.ANNOTATION_TYPE;
+
+        return elementTypeToNodeType.entrySet().stream()
+                .filter(e -> e.getValue().equals(nodeType))
+                .map(Map.Entry::getKey)
+                .findFirst()
+                .orElseThrow(() -> new IllegalArgumentException("Unsupported node type " + nodeType));
+    }
 
     public static ClassNode getClassNode(AnnotatedNode target) {
         return target instanceof ClassNode ? (ClassNode) target : target.getDeclaringClass();

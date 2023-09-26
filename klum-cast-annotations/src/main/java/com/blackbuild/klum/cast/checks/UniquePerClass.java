@@ -38,7 +38,7 @@ import java.lang.annotation.Target;
 @Retention(RetentionPolicy.RUNTIME)
 @KlumCastValidator(".Check")
 public @interface UniquePerClass {
-    class Check extends KlumCastAnnotationCheck<UniquePerClass> {
+    class Check extends KlumCastCheck<UniquePerClass> {
 
         private static final String METADATA_KEY = UniquePerClass.class.getName();
 

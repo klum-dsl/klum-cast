@@ -79,7 +79,7 @@ import com.blackbuild.klum.cast.checks.*
 import org.codehaus.groovy.ast.*
 import com.blackbuild.klum.cast.validation.*
 
-class MyValidator extends KlumCastAnnotationCheck<MyAnnotation> {
+class MyValidator extends KlumCastCheck<MyAnnotation> {
     @Override
     protected void doCheck(AnnotationNode annotationToCheck, AnnotatedNode target) {
         AstSpec.currentTest.valueHolder["executed"] = true
