@@ -62,4 +62,16 @@ public class AstSupport {
     public static GroovyClassLoader getTargetClassLoader(AnnotatedNode target) {
         return getClassNode(target).getModule().getContext().getClassLoader();
     }
+
+    public static boolean isAssignable(ClassNode type, ClassNode superClass) {
+        return type.isDerivedFrom(superClass) || type.implementsInterface(superClass);
+    }
+
+    public static boolean isAssignable(ClassNode type, Class<?> superClass) {
+        return isAssignable(type, ClassHelper.make(superClass));
+    }
+
+    public static boolean isAssignable(Variable parameter, Class<?> requiredType) {
+        return isAssignable(parameter.getType(), requiredType);
+    }
 }

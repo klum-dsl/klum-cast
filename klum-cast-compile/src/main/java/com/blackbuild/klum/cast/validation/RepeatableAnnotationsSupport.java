@@ -59,12 +59,8 @@ public class RepeatableAnnotationsSupport {
             return Stream.empty();
         if (!returnType.getComponentType().isAnnotation())
             return Stream.empty();
-
-
         if (!returnType.getComponentType().isAnnotationPresent(Repeatable.class))
             return Stream.empty();
-
-
         if (!returnType.getComponentType().getAnnotation(Repeatable.class).value().equals(annotation.annotationType()))
             return Stream.empty();
 

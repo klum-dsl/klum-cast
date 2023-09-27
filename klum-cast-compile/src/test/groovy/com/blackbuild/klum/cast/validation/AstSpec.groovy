@@ -42,7 +42,7 @@ abstract class AstSpec extends Specification {
     CompilerConfiguration compilerConfiguration
 
     Map<String, ?> valueHolder = [:]
-    private ImportCustomizer importCustomizer
+    ImportCustomizer importCustomizer
 
     def setup() {
         oldLoader = Thread.currentThread().contextClassLoader
