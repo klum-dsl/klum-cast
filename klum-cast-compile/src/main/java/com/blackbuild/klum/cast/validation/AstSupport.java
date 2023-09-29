@@ -64,7 +64,7 @@ public class AstSupport {
     }
 
     public static boolean isAssignable(ClassNode type, ClassNode superClass) {
-        return type.isDerivedFrom(superClass) || type.implementsInterface(superClass);
+        return ClassHelper.getWrapper(type).isDerivedFrom(ClassHelper.getWrapper(superClass)) || type.implementsInterface(superClass);
     }
 
     public static boolean isAssignable(ClassNode type, Class<?> superClass) {
