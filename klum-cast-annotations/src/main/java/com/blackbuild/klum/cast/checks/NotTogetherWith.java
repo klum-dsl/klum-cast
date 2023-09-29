@@ -38,6 +38,7 @@ import java.lang.annotation.*;
  *       // ...
  *   }
  * }</pre>
+ * <p>
  * The above example specifies that {@code Annotation1} and {@code Annotation2} should not be used together with {@code MyAnnotation}.
  * </p>
  *

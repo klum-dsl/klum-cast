@@ -48,11 +48,10 @@ public class MemberTargetFilter extends KlumCastCheck<Annotation> {
         ElementType targetElementType = AstSupport.getElementType(target.getClass());
         if (!allowedTargets.contains(targetElementType))
             throw new IllegalStateException(String.format(
-                    "Annotation %s is not allowed on %s",
+                    "Annotation member %s.%s is not allowed on %s",
                     annotationToCheck.getClassNode().getName(),
+                    memberName,
                     targetElementType
             ));
-        System.out.println("MemberTargetFilter.doCheck");
-
     }
 }
