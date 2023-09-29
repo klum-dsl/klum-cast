@@ -23,7 +23,6 @@
  */
 package com.blackbuild.klum.cast.checks.impl;
 
-import com.blackbuild.klum.cast.checks.KlumCastCheck;
 import com.blackbuild.klum.cast.checks.NotOn;
 import com.blackbuild.klum.cast.checks.OnlyOn;
 import com.blackbuild.klum.cast.validation.AstSupport;

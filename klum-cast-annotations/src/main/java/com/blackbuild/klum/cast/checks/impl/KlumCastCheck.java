@@ -21,33 +21,51 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.blackbuild.klum.cast.checks;
+package com.blackbuild.klum.cast.checks.impl;
 
-import com.blackbuild.klum.cast.KlumCastValidator;
-import com.blackbuild.klum.cast.checks.impl.KlumCastCheck;
+import org.codehaus.groovy.ast.ASTNode;
 import org.codehaus.groovy.ast.AnnotatedNode;
 import org.codehaus.groovy.ast.AnnotationNode;
-import org.codehaus.groovy.ast.ClassHelper;
-import org.codehaus.groovy.ast.ClassNode;
 
 import java.lang.annotation.Annotation;
-import java.lang.annotation.Retention;
-import java.lang.annotation.Target;
+import java.util.Optional;
 
-@Target({java.lang.annotation.ElementType.ANNOTATION_TYPE})
-@Retention(java.lang.annotation.RetentionPolicy.RUNTIME)
-@KlumCastValidator(".Check")
-public @interface ClassNeedsAnnotation {
-    Class<? extends Annotation> value();
-    String message() default "Annotations annotated with %s are only valid on classes annotated with %s.";
+public abstract class KlumCastCheck<T extends Annotation> {
 
-    class Check extends KlumCastCheck<ClassNeedsAnnotation> {
+    protected T validatorAnnotation;
+    protected String memberName;
 
-        @Override
-        protected void doCheck(AnnotationNode annotationToCheck, AnnotatedNode target) {
-            ClassNode realTarget = (target instanceof ClassNode) ? (ClassNode) target : target.getDeclaringClass();
-            if (realTarget.getAnnotations(ClassHelper.make(validatorAnnotation.value())).isEmpty())
-                throw new RuntimeException(String.format(validatorAnnotation.message(), annotationToCheck.getClassNode().getNameWithoutPackage(), validatorAnnotation.value().getSimpleName()));
+    public void setValidatorAnnotation(T validatorAnnotation) {
+        this.validatorAnnotation = validatorAnnotation;
+    }
+
+    public void setMemberName(String memberName) {
+        this.memberName = memberName;
+    }
+
+    public Optional<Error> check(AnnotationNode annotationToCheck, AnnotatedNode target) {
+        try {
+            if (isValidFor(target))
+                doCheck(annotationToCheck, target);
+            return Optional.empty();
+        } catch (Exception e) {
+            return Optional.of(new Error(e.getMessage(), annotationToCheck));
+        }
+    }
+
+    protected boolean isValidFor(AnnotatedNode target) {
+        return true;
+    }
+
+    protected abstract void doCheck(AnnotationNode annotationToCheck, AnnotatedNode target);
+
+    public static class Error {
+        public final String message;
+        public final ASTNode node;
+
+        public Error(String message, ASTNode node) {
+            this.message = message;
+            this.node = node;
         }
     }
 }

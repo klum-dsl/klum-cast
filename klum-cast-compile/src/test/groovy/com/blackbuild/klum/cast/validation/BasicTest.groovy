@@ -75,7 +75,7 @@ import com.blackbuild.klum.cast.checks.*
 package checks
 
 import annotations.MyAnnotation
-import com.blackbuild.klum.cast.checks.*
+import com.blackbuild.klum.cast.checks.impl.KlumCastCheck
 import org.codehaus.groovy.ast.*
 import com.blackbuild.klum.cast.validation.*
 

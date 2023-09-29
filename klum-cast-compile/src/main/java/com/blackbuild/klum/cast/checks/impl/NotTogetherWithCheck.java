@@ -23,7 +23,6 @@
  */
 package com.blackbuild.klum.cast.checks.impl;
 
-import com.blackbuild.klum.cast.checks.KlumCastCheck;
 import com.blackbuild.klum.cast.checks.NotTogetherWith;
 import org.codehaus.groovy.ast.AnnotatedNode;
 import org.codehaus.groovy.ast.AnnotationNode;

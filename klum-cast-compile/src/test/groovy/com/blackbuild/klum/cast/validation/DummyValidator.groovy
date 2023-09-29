@@ -24,7 +24,7 @@
 package com.blackbuild.klum.cast.validation
 
 import com.blackbuild.klum.cast.KlumCastValidator
-import com.blackbuild.klum.cast.checks.KlumCastCheck
+import com.blackbuild.klum.cast.checks.impl.KlumCastCheck
 import org.codehaus.groovy.ast.AnnotatedNode
 import org.codehaus.groovy.ast.AnnotationNode
 

@@ -23,49 +23,38 @@
  */
 package com.blackbuild.klum.cast.checks;
 
-import org.codehaus.groovy.ast.ASTNode;
+import com.blackbuild.klum.cast.KlumCastValidator;
+import com.blackbuild.klum.cast.checks.impl.KlumCastCheck;
 import org.codehaus.groovy.ast.AnnotatedNode;
 import org.codehaus.groovy.ast.AnnotationNode;
+import org.codehaus.groovy.ast.MethodNode;
 
-import java.lang.annotation.Annotation;
-import java.util.Optional;
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
 
-public abstract class KlumCastCheck<T extends Annotation> {
+/**
+ * If the validated annotation is placed on a method, the method must be static.
+ * Has no effect if the annotation is placed on any other element.
+ */
+@Target({ElementType.ANNOTATION_TYPE})
+@Retention(RetentionPolicy.RUNTIME)
+@KlumCastValidator(".Check")
+public @interface MustBeStatic {
 
-    protected T validatorAnnotation;
-    protected String memberName;
+    class Check extends KlumCastCheck<MustBeStatic> {
 
-    public void setValidatorAnnotation(T validatorAnnotation) {
-        this.validatorAnnotation = validatorAnnotation;
-    }
+        @Override
+        protected void doCheck(AnnotationNode annotationToCheck, AnnotatedNode target) {
+            if (!((MethodNode) target).isStatic())
+                throw new IllegalStateException("Annotation " + annotationToCheck.getClassNode().getName() + " must be placed on a static method.");
+        }
 
-    public void setMemberName(String memberName) {
-        this.memberName = memberName;
-    }
-
-    public Optional<Error> check(AnnotationNode annotationToCheck, AnnotatedNode target) {
-        try {
-            if (isValidFor(target))
-                doCheck(annotationToCheck, target);
-            return Optional.empty();
-        } catch (Exception e) {
-            return Optional.of(new Error(e.getMessage(), annotationToCheck));
+        @Override
+        protected boolean isValidFor(AnnotatedNode target) {
+            return target instanceof MethodNode;
         }
     }
 
-    protected boolean isValidFor(AnnotatedNode target) {
-        return true;
-    }
-
-    protected abstract void doCheck(AnnotationNode annotationToCheck, AnnotatedNode target);
-
-    public static class Error {
-        public final String message;
-        public final ASTNode node;
-
-        public Error(String message, ASTNode node) {
-            this.message = message;
-            this.node = node;
-        }
-    }
 }

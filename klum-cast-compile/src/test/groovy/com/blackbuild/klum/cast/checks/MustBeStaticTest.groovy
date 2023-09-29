@@ -21,34 +21,40 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.blackbuild.klum.cast.checks;
+package com.blackbuild.klum.cast.checks
 
-import com.blackbuild.klum.cast.KlumCastValidator;
-import com.blackbuild.klum.cast.checks.impl.KlumCastCheck;
-import org.codehaus.groovy.ast.AnnotatedNode;
-import org.codehaus.groovy.ast.AnnotationNode;
-import org.codehaus.groovy.ast.MethodNode;
+import com.blackbuild.klum.cast.validation.AstSpec
+import org.codehaus.groovy.control.MultipleCompilationErrorsException
 
-import java.lang.annotation.ElementType;
-import java.lang.annotation.Retention;
-import java.lang.annotation.RetentionPolicy;
-import java.lang.annotation.Target;
+class MustBeStaticTest extends AstSpec {
 
-@Target(ElementType.ANNOTATION_TYPE)
+    def "Static method works"() {
+        given:
+        createClass '''
+@Target([ElementType.METHOD, ElementType.TYPE])
 @Retention(RetentionPolicy.RUNTIME)
-@KlumCastValidator(".Check")
-public @interface NumberOfParameters {
-    int value();
+@KlumCastValidated
+@MustBeStatic
+@interface MyAnnotation {}
+'''
+        when:
+        createClass '''
+class MyClass {
+    @MyAnnotation
+    static List<String> myMethod() { null }
+    }'''
 
-    class Check extends KlumCastCheck<NumberOfParameters> {
+        then:
+        notThrown(MultipleCompilationErrorsException)
 
-        @Override
-        protected void doCheck(AnnotationNode annotationToCheck, AnnotatedNode target) {
-            if (target instanceof MethodNode) {
-                MethodNode methodNode = (MethodNode) target;
-                if (methodNode.getParameters().length != validatorAnnotation.value())
-                    throw new RuntimeException("Method " + methodNode.getName() + " must have " + validatorAnnotation.value() + " parameters.");
-            }
-        }
+        when:
+        createClass '''
+class MyClass {
+    @MyAnnotation
+    List<String> myMethod() { null }
+    }'''
+
+        then:
+        thrown(MultipleCompilationErrorsException)
     }
 }
