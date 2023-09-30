@@ -55,6 +55,15 @@ public class AstSupport {
                 .orElseThrow(() -> new IllegalArgumentException("Unsupported node type " + nodeType));
     }
 
+    public static boolean matchesOneOf(ElementType[] elementTypes, AnnotatedNode node) {
+        if (elementTypes.length == 0) return true;
+        ElementType elementType = getElementType(node.getClass());
+        for (ElementType type : elementTypes)
+            if (type == elementType)
+                return true;
+        return false;
+    }
+
     public static ClassNode getClassNode(AnnotatedNode target) {
         return target instanceof ClassNode ? (ClassNode) target : target.getDeclaringClass();
     }
