@@ -40,6 +40,10 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 public class ValidationHandler {
+    private static Stream<? extends Annotation> getValidatorAnnotations(Annotation a) {
+        return RepeatableAnnotationsSupport.unwrapAnnotations(a, c -> c.isAnnotationPresent(KlumCastValidator.class) || KlumCastValidator.class.isAssignableFrom(c));
+    }
+
     public enum Status { VALIDATED }
 
     public static final String METADATA_KEY = ValidationHandler.class.getName();
@@ -88,7 +92,7 @@ public class ValidationHandler {
     @NotNull
     private static Stream<KlumCastCheck.Error> validateAnnotationItself(AnnotatedNode target, AnnotationNode validatedAnnotation) {
         return Arrays.stream(validatedAnnotation.getClassNode().getTypeClass().getAnnotations())
-                .flatMap(a -> RepeatableAnnotationsSupport.unwrapAnnotations(a, c -> c.isAnnotationPresent(KlumCastValidator.class) || KlumCastValidator.class.isAssignableFrom(c)))
+                .flatMap(ValidationHandler::getValidatorAnnotations)
                 .map(ValidationHandler::createFromAnnotation)
                 .map(c -> c.check(validatedAnnotation, target))
                 .flatMap(Optional::stream);
