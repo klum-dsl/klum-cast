@@ -105,6 +105,8 @@ public class KlumCastTransformation extends AbstractASTTransformation implements
 
     @Override
     public void visitProperty(PropertyNode node) {
-        visitAnnotations(node);
+        // do nothing, annotations will be visited on their methods or fields
+        // Handling changed with Groovy 4, where PropertyNodes DID hold the annotations of their fields leading to
+        // unexpected behaviour in case of "instanceof FieldNode"
     }
 }

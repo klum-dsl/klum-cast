@@ -48,6 +48,9 @@ public class AstSupport {
         if (nodeType.isAnnotation())
             return ElementType.ANNOTATION_TYPE;
 
+        if (PropertyNode.class.isAssignableFrom(nodeType))
+            return ElementType.FIELD;
+
         return elementTypeToNodeType.entrySet().stream()
                 .filter(e -> e.getValue().equals(nodeType))
                 .map(Map.Entry::getKey)
