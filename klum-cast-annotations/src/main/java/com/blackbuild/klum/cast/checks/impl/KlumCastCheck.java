@@ -26,29 +26,50 @@ package com.blackbuild.klum.cast.checks.impl;
 import org.codehaus.groovy.ast.ASTNode;
 import org.codehaus.groovy.ast.AnnotatedNode;
 import org.codehaus.groovy.ast.AnnotationNode;
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.lang.annotation.Annotation;
 import java.util.Optional;
 
+/**
+ * Base class for KlumCastChecks. Subclasses have access to the following elements:
+ * <ul>
+ *     <li>The validator annotation (T), either {@link com.blackbuild.klum.cast.KlumCastValidator} for direct checks
+ *     or a specific annotation for configuring the validation (like {@link com.blackbuild.klum.cast.checks.MutuallyExclusive})</li>
+ *     <li>The member name of the annotated element, this is only set when the validation annotation is placed on a member</li>
+ * </ul>
+ * Usually only doCheck needs to be implemented, isValidFor can be used to restrict the check to certain elements.
+ * @param <T>
+ */
 public abstract class KlumCastCheck<T extends Annotation> {
 
-    protected T validatorAnnotation;
-    protected String memberName;
+    @NotNull protected T validatorAnnotation;
+    @Nullable protected String memberName;
 
-    public void setValidatorAnnotation(T validatorAnnotation) {
+    public void setValidatorAnnotation(@NotNull T validatorAnnotation) {
         this.validatorAnnotation = validatorAnnotation;
     }
 
-    public void setMemberName(String memberName) {
+    public void setMemberName(@Nullable String memberName) {
         this.memberName = memberName;
     }
 
+    /**
+     * Performs the actual check. Checks if the check is applicable for the given target and if so,
+     * delegates to the doCheck method, wrapping any exceptions thrown in an Error object.
+     * @param annotationToCheck The annotation whose placement is validated
+     * @param target the target where the annotation to check is placed
+     * @return an Optional Error object if the check failed, empty if the check succeeded
+     */
     public Optional<Error> check(AnnotationNode annotationToCheck, AnnotatedNode target) {
         try {
             if (isValidFor(target))
                 doCheck(annotationToCheck, target);
             return Optional.empty();
-        } catch (Exception e) {
+        } catch (ValidationException e) {
+            return Optional.of(e.toError(annotationToCheck));
+        } catch (RuntimeException e) {
             return Optional.of(new Error(e.getMessage(), annotationToCheck));
         }
     }
@@ -57,7 +78,7 @@ public abstract class KlumCastCheck<T extends Annotation> {
         return true;
     }
 
-    protected abstract void doCheck(AnnotationNode annotationToCheck, AnnotatedNode target);
+    protected abstract void doCheck(AnnotationNode annotationToCheck, AnnotatedNode target) throws ValidationException;
 
     public static class Error {
         public final String message;

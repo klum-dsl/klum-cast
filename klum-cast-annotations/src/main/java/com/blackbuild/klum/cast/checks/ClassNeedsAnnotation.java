@@ -36,7 +36,7 @@ import java.lang.annotation.Target;
 
 @Target({java.lang.annotation.ElementType.ANNOTATION_TYPE})
 @Retention(java.lang.annotation.RetentionPolicy.RUNTIME)
-@KlumCastValidator(".Check")
+@KlumCastValidator(type = ClassNeedsAnnotation.Check.class)
 public @interface ClassNeedsAnnotation {
     Class<? extends Annotation> value();
     String message() default "Annotations annotated with %s are only valid on classes annotated with %s.";

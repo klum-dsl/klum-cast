@@ -41,7 +41,7 @@ import java.util.stream.Collectors;
 @Target({ElementType.ANNOTATION_TYPE})
 @Retention(RetentionPolicy.RUNTIME)
 @Repeatable(MutuallyExclusive.List.class)
-@KlumCastValidator(".Check")
+@KlumCastValidator(type = MutuallyExclusive.Check.class)
 @Documented
 public @interface MutuallyExclusive {
     String[] value();

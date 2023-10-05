@@ -36,7 +36,7 @@ import java.lang.annotation.Target;
 
 @Target(ElementType.ANNOTATION_TYPE)
 @Retention(RetentionPolicy.RUNTIME)
-@KlumCastValidator(".Check")
+@KlumCastValidator(type = NumberOfParameters.Check.class)
 public @interface NumberOfParameters {
     int value();
 

@@ -102,19 +102,14 @@ public class ValidationHandler {
         KlumCastValidator validator = annotation instanceof KlumCastValidator ? (KlumCastValidator) annotation : annotation.annotationType().getAnnotation(KlumCastValidator.class);
         if (validator == null)
             throw new IllegalStateException("Annotation " + annotation.annotationType().getName() + " is not annotated with @KlumCastValidator.");
+        if (validator.value().isEmpty() && validator.type().equals(KlumCastValidator.None.class))
+            throw new IllegalStateException("@KlumCastValidator must not specify a validator class using value or type.");
+        if (!validator.value().isEmpty() && !validator.type().equals(KlumCastValidator.None.class))
+            throw new IllegalStateException("@KlumCastValidator specifies both a validator class and a validator name.");
         try {
-            Class<?> type;
-            if (validator.value().startsWith(".")) {
-                if (annotation instanceof KlumCastValidator)
-                    throw new IllegalStateException("Direct validators need to be specified with their full class name, not with a relative name.");
-                type = Arrays.stream(annotation.annotationType().getDeclaredClasses())
-                        .filter(c -> c.getSimpleName().equals(validator.value().substring(1)))
-                        .filter(KlumCastCheck.class::isAssignableFrom)
-                        .findFirst()
-                        .orElseThrow(() -> new IllegalStateException("Annotation " + annotation.annotationType().getName() + " does not contain a KlumCastCheck named " + validator.value().substring(1) +  "."));
-            } else {
+            Class<?> type = validator.type();
+            if (type.equals(KlumCastValidator.None.class))
                 type = Class.forName(validator.value(), true, Thread.currentThread().getContextClassLoader());
-            }
             if (!KlumCastCheck.class.isAssignableFrom(type))
                 throw new IllegalStateException("Class " + validator.value() + " is not a KlumCastCheck.");
             KlumCastCheck<T> check = (KlumCastCheck<T>) InvokerHelper.invokeNoArgumentsConstructorOf(type);

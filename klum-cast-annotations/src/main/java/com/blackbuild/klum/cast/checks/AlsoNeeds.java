@@ -41,7 +41,7 @@ import java.util.Set;
  */
 @Target(ElementType.METHOD)
 @Retention(RetentionPolicy.RUNTIME)
-@KlumCastValidator(".Check")
+@KlumCastValidator(type = AlsoNeeds.Check.class)
 public @interface AlsoNeeds {
     String[] value();
 

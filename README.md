@@ -138,12 +138,12 @@ class MyValidator extends KlumCastCheck<MyAnnotation> {
 
 ## Check as inner class
 
-For convenience, the calidator class can be implemented as inner class to the annotation itself. In this case, the value of the `@KlumCastValidator` annotation can be shortened to `.<Classname>`.
+For convenience, the validator class can be implemented as inner class to the annotation itself. In that case, the alternative syntax using `type` instead of `value` is useful.
 
 ```groovy
 @Target(ElementType.ANNOTATION_TYPE)
 @Retention(RetentionPolicy.RUNTIME)
-@KlumCastValidator(".Check")
+@KlumCastValidator(type = MyAnnotation.Check.class)
 @interface MyAnnotation {
     String value()
 
