@@ -99,9 +99,16 @@ public class ValidationHandler {
     }
 
     public static <T extends Annotation> KlumCastCheck<T> createFromAnnotation(T annotation) {
-        KlumCastValidator validator = annotation instanceof KlumCastValidator ? (KlumCastValidator) annotation : annotation.annotationType().getAnnotation(KlumCastValidator.class);
-        if (validator == null)
-            throw new IllegalStateException("Annotation " + annotation.annotationType().getName() + " is not annotated with @KlumCastValidator.");
+        KlumCastValidator validator;
+        if (annotation instanceof KlumCastValidator) {
+            validator = (KlumCastValidator) annotation;
+        } else {
+            validator = annotation.annotationType().getAnnotation(KlumCastValidator.class);
+            if (validator == null)
+                throw new IllegalStateException("Annotation " + annotation.annotationType().getName() + " is not annotated with @KlumCastValidator.");
+            if (validator.parameters().length != 0)
+                throw new IllegalStateException("KlumCastValidator.parameters() may only be set on direct validators.");
+        }
         if (validator.value().isEmpty() && validator.type().equals(KlumCastValidator.None.class))
             throw new IllegalStateException("@KlumCastValidator must not specify a validator class using value or type.");
         if (!validator.value().isEmpty() && !validator.type().equals(KlumCastValidator.None.class))

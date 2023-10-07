@@ -35,9 +35,22 @@ import java.lang.annotation.*;
 @Retention(RetentionPolicy.RUNTIME)
 @Repeatable(KlumCastValidator.List.class)
 public @interface KlumCastValidator {
+    /**
+     * The validator class to use as fully qualified class name. Must be a subtype of {@link KlumCastCheck}.
+     * @return the validator class to use.
+     */
     String value() default "";
+
+    /**
+     * The validator class to use. Must be a subtype of {@link KlumCastCheck}.
+     * @return the validator class to use.
+     */
     Class<? extends KlumCastCheck> type() default None.class;
 
+    /**
+     * Additional parameters to be used for direct validators.
+     * @return additional parameters to be used for direct validators.
+     */
     String[] parameters() default {};
 
     @Target(ElementType.ANNOTATION_TYPE)
