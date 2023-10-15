@@ -35,7 +35,7 @@ import java.util.stream.Collectors;
 public class NotTogetherWithCheck extends KlumCastCheck<NotTogetherWith> {
     @Override
     protected void doCheck(AnnotationNode annotationToCheck, AnnotatedNode target) {
-        Set<String> forbiddenCoAnnotations = Arrays.stream(validatorAnnotation.value()).map(Class::getName).collect(Collectors.toSet());
+        Set<String> forbiddenCoAnnotations = Arrays.stream(controlAnnotation.value()).map(Class::getName).collect(Collectors.toSet());
         if (target.getAnnotations().stream()
                 .map(AnnotationNode::getClassNode)
                 .map(ClassNode::getName)

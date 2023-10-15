@@ -39,11 +39,11 @@ public class MemberTargetFilter extends KlumCastCheck<Annotation> {
     @Override
     protected void doCheck(AnnotationNode annotationToCheck, AnnotatedNode target) {
         EnumSet<ElementType> allowedTargets;
-        if (validatorAnnotation instanceof NotOn)
-            allowedTargets = EnumSet.complementOf(EnumSet.copyOf(Arrays.asList(((NotOn) validatorAnnotation).value())));
-        else if (validatorAnnotation instanceof OnlyOn)
-            allowedTargets = EnumSet.copyOf(Arrays.asList(((OnlyOn) validatorAnnotation).value()));
-        else throw new IllegalStateException("Annotation " + validatorAnnotation.annotationType().getName() + " is not supported by " + getClass().getName());
+        if (controlAnnotation instanceof NotOn)
+            allowedTargets = EnumSet.complementOf(EnumSet.copyOf(Arrays.asList(((NotOn) controlAnnotation).value())));
+        else if (controlAnnotation instanceof OnlyOn)
+            allowedTargets = EnumSet.copyOf(Arrays.asList(((OnlyOn) controlAnnotation).value()));
+        else throw new IllegalStateException("Annotation " + controlAnnotation.annotationType().getName() + " is not supported by " + getClass().getName());
 
         ElementType targetElementType = AstSupport.getElementType(target.getClass());
         if (!allowedTargets.contains(targetElementType))

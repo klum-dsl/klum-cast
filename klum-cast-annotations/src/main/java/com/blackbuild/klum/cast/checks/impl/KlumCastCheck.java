@@ -23,6 +23,7 @@
  */
 package com.blackbuild.klum.cast.checks.impl;
 
+import com.blackbuild.klum.cast.KlumCastValidator;
 import org.codehaus.groovy.ast.ASTNode;
 import org.codehaus.groovy.ast.AnnotatedNode;
 import org.codehaus.groovy.ast.AnnotationNode;
@@ -35,8 +36,8 @@ import java.util.Optional;
 /**
  * Base class for KlumCastChecks. Subclasses have access to the following elements:
  * <ul>
- *     <li>The validator annotation (T), either {@link com.blackbuild.klum.cast.KlumCastValidator} for direct checks
- *     or a specific annotation for configuring the validation (like {@link com.blackbuild.klum.cast.checks.MutuallyExclusive})</li>
+ *     <li>The control annotation (T), like {@link com.blackbuild.klum.cast.checks.MutuallyExclusive}), this can be null</li>
+ *     <li>the {@link KlumCastValidator} annotation, with access to additional parameters</li>
  *     <li>The member name of the annotated element, this is only set when the validation annotation is placed on a member</li>
  * </ul>
  * Usually only doCheck needs to be implemented, isValidFor can be used to restrict the check to certain elements.
@@ -44,16 +45,22 @@ import java.util.Optional;
  */
 public abstract class KlumCastCheck<T extends Annotation> {
 
-    @NotNull protected T validatorAnnotation;
+    @Nullable protected T controlAnnotation;
     @Nullable protected String memberName;
+    @NotNull protected KlumCastValidator klumCastValidator;
 
-    public void setValidatorAnnotation(@NotNull T validatorAnnotation) {
-        this.validatorAnnotation = validatorAnnotation;
+    public void setControlAnnotation(@Nullable T controlAnnotation) {
+        this.controlAnnotation = controlAnnotation;
+    }
+
+    public void setValidatorAnnotation(@NotNull KlumCastValidator validatorAnnotation) {
+        this.klumCastValidator = validatorAnnotation;
     }
 
     public void setMemberName(@Nullable String memberName) {
         this.memberName = memberName;
     }
+
 
     /**
      * Performs the actual check. Checks if the check is applicable for the given target and if so,

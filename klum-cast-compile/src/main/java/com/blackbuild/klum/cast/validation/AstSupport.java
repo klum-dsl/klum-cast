@@ -86,4 +86,8 @@ public class AstSupport {
     public static boolean isAssignable(Variable parameter, Class<?> requiredType) {
         return isAssignable(parameter.getType(), requiredType);
     }
+
+    public static boolean hasAnnotation(AnnotationNode annotation, ClassNode klumCastValidated) {
+        return !annotation.getClassNode().getAnnotations(klumCastValidated).isEmpty();
+    }
 }

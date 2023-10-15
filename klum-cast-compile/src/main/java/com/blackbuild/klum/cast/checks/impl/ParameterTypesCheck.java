@@ -34,9 +34,9 @@ public class ParameterTypesCheck extends KlumCastCheck<ParameterTypes> {
     @Override
     protected void doCheck(AnnotationNode annotationToCheck, AnnotatedNode target) {
 
-        Class<?>[] requiredTypes = validatorAnnotation.value();
+        Class<?>[] requiredTypes = controlAnnotation.value();
         MethodNode method = (MethodNode) target;
-        if (validatorAnnotation.strict() && method.getParameters().length != requiredTypes.length)
+        if (controlAnnotation.strict() && method.getParameters().length != requiredTypes.length)
             throw new IllegalStateException(String.format(
                     "Method %s has %d parameters, but exactly %d are required",
                     method.getName(),

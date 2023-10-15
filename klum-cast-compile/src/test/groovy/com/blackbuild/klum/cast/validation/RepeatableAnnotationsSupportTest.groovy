@@ -23,11 +23,8 @@
  */
 package com.blackbuild.klum.cast.validation
 
-import com.blackbuild.klum.cast.checks.OnlyOn
-import org.codehaus.groovy.control.MultipleCompilationErrorsException
-import spock.lang.Requires
 
-import java.lang.annotation.Documented
+import spock.lang.Requires
 
 class RepeatableAnnotationsSupportTest extends AstSpec {
     Class A
@@ -68,7 +65,7 @@ import java.lang.annotation.RetentionPolicy
 @As([@A, @A])
 class C {}
 '''
-        def anns = RepeatableAnnotationsSupport.unwrapAnnotations(C.getAnnotation(As), { it.isAnnotationPresent(Documented) }).toArray()
+        def anns = RepeatableAnnotationsSupport.unwrapAnnotations(C.getAnnotation(As)).toArray()
 
         then:
         anns.size() == 2
@@ -81,7 +78,7 @@ class C {}
 @A
 class C {}
 '''
-        def anns = RepeatableAnnotationsSupport.unwrapAnnotations(C.getAnnotation(A), { it.isAnnotationPresent(Documented) }).toArray()
+        def anns = RepeatableAnnotationsSupport.unwrapAnnotations(C.getAnnotation(A)).toArray()
 
         then:
         anns.size() == 1
@@ -96,7 +93,7 @@ class C {}
 @A
 class C {}
 '''
-        def anns = RepeatableAnnotationsSupport.unwrapAnnotations(C.getAnnotation(As), { it.isAnnotationPresent(Documented) }).toArray()
+        def anns = RepeatableAnnotationsSupport.unwrapAnnotations(C.getAnnotation(As)).toArray()
 
         then:
         anns.size() == 2

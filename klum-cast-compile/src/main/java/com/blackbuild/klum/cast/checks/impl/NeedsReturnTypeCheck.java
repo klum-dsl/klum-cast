@@ -34,8 +34,8 @@ public class NeedsReturnTypeCheck extends KlumCastCheck<NeedsReturnType> {
     protected void doCheck(AnnotationNode annotationToCheck, AnnotatedNode target) {
         ClassNode actualReturnType = ((MethodNode) target).getReturnType();
 
-        if (Arrays.stream(validatorAnnotation.value()).map(ClassHelper::make).noneMatch(r -> AstSupport.isAssignable(actualReturnType, r)))
-            throw new IllegalStateException("Method " + ((MethodNode) target).getName() + " must return one of " + Arrays.toString(validatorAnnotation.value()) + ".");
+        if (Arrays.stream(controlAnnotation.value()).map(ClassHelper::make).noneMatch(r -> AstSupport.isAssignable(actualReturnType, r)))
+            throw new IllegalStateException("Method " + ((MethodNode) target).getName() + " must return one of " + Arrays.toString(controlAnnotation.value()) + ".");
     }
 
     @Override

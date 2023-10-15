@@ -54,8 +54,8 @@ public @interface ClassNeedsAnnotation {
         @Override
         protected void doCheck(AnnotationNode annotationToCheck, AnnotatedNode target) {
             ClassNode realTarget = (target instanceof ClassNode) ? (ClassNode) target : target.getDeclaringClass();
-            if (realTarget.getAnnotations(ClassHelper.make(validatorAnnotation.value())).isEmpty())
-                throw new RuntimeException(String.format(validatorAnnotation.message(), annotationToCheck.getClassNode().getNameWithoutPackage(), validatorAnnotation.value().getSimpleName()));
+            if (realTarget.getAnnotations(ClassHelper.make(controlAnnotation.value())).isEmpty())
+                throw new RuntimeException(String.format(controlAnnotation.message(), annotationToCheck.getClassNode().getNameWithoutPackage(), controlAnnotation.value().getSimpleName()));
         }
     }
 }

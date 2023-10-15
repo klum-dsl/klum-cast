@@ -53,7 +53,7 @@ public @interface AlsoNeeds {
 
         @Override
         protected void doCheck(AnnotationNode annotationToCheck, AnnotatedNode target) {
-            String[] requiredCoMembers = validatorAnnotation.value();
+            String[] requiredCoMembers = controlAnnotation.value();
             Set<String> existingMembers = annotationToCheck.getMembers().keySet();
 
             if (Arrays.stream(requiredCoMembers).noneMatch(existingMembers::contains))

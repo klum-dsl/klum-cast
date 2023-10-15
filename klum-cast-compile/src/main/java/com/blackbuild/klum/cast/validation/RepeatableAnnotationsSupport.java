@@ -28,10 +28,10 @@ import org.jetbrains.annotations.NotNull;
 
 import java.lang.annotation.Annotation;
 import java.lang.annotation.Repeatable;
+import java.lang.reflect.AnnotatedElement;
 import java.lang.reflect.Method;
 import java.util.Arrays;
 import java.util.Optional;
-import java.util.function.Predicate;
 import java.util.stream.Stream;
 
 public class RepeatableAnnotationsSupport {
@@ -42,33 +42,30 @@ public class RepeatableAnnotationsSupport {
      * Returns a stream if his annotation. If this annotation is the container of a Repeatable annotation, the stream
      * contains all annotations of the repeatable type instead.
      * @param annotation the annotation to unwrap
-     * @param filter
      * @return
      */
-    public static Stream<Annotation> unwrapAnnotations(Annotation annotation, Predicate<Class<? extends Annotation>> filter) {
-        if (filter.test(annotation.annotationType()))
-            return Stream.of(annotation); // if it is a validator, it would handle inner annotations itself
-
+    public static Stream<Annotation> unwrapAnnotations(Annotation annotation) {
         Optional<Method> values = getSingleValuesMemberMethod(annotation);
         if (values.isEmpty())
-            return Stream.empty();
+            return Stream.of(annotation);
 
         Class<?> returnType = values.get().getReturnType();
 
         if (!returnType.isArray())
-            return Stream.empty();
+            return Stream.of(annotation);
         if (!returnType.getComponentType().isAnnotation())
-            return Stream.empty();
+            return Stream.of(annotation);
         if (!returnType.getComponentType().isAnnotationPresent(Repeatable.class))
-            return Stream.empty();
+            return Stream.of(annotation);
         if (!returnType.getComponentType().getAnnotation(Repeatable.class).value().equals(annotation.annotationType()))
-            return Stream.empty();
+            return Stream.of(annotation);
 
-        //noinspection unchecked
-        if (!filter.test((Class<? extends Annotation>) returnType.getComponentType()))
-            return Stream.empty();
+        return Arrays.stream((Annotation[]) InvokerHelper.invokeMethod(annotation, "value", InvokerHelper.EMPTY_ARGS));
+    }
 
-        return Arrays.stream((Annotation[]) InvokerHelper.invokeMethod(annotation, "value", new Object[0]));
+    public static Stream<Annotation> getAllAnnotations(AnnotatedElement element) {
+        return Arrays.stream(element.getAnnotations())
+                .flatMap(a -> unwrapAnnotations(a));
     }
 
     @NotNull

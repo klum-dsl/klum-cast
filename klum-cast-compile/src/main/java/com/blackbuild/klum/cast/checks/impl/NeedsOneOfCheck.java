@@ -35,15 +35,15 @@ import java.util.stream.Collectors;
 public class NeedsOneOfCheck extends KlumCastCheck<NeedsOneOf> {
     @Override
     protected void doCheck(AnnotationNode annotationToCheck, AnnotatedNode target) {
-        Collection<String> matchingMembers = Arrays.stream(validatorAnnotation.value()).filter(m -> annotationToCheck.getMembers().containsKey(m)).collect(Collectors.toList());
-        if (validatorAnnotation.exclusive() && matchingMembers.size() != 1)
-            throw new RuntimeException("Exactly one of " + Arrays.asList(validatorAnnotation.value()) + " must be set");
-        if (!validatorAnnotation.exclusive() && matchingMembers.isEmpty())
-            throw new RuntimeException("At least one of " + Arrays.asList(validatorAnnotation.value()) + " must be set");
+        Collection<String> matchingMembers = Arrays.stream(controlAnnotation.value()).filter(m -> annotationToCheck.getMembers().containsKey(m)).collect(Collectors.toList());
+        if (controlAnnotation.exclusive() && matchingMembers.size() != 1)
+            throw new RuntimeException("Exactly one of " + Arrays.asList(controlAnnotation.value()) + " must be set");
+        if (!controlAnnotation.exclusive() && matchingMembers.isEmpty())
+            throw new RuntimeException("At least one of " + Arrays.asList(controlAnnotation.value()) + " must be set");
     }
 
     @Override
     protected boolean isValidFor(AnnotatedNode target) {
-        return AstSupport.matchesOneOf(validatorAnnotation.whenOn(), target);
+        return AstSupport.matchesOneOf(controlAnnotation.whenOn(), target);
     }
 }

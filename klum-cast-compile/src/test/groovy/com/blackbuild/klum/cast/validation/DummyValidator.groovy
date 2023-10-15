@@ -47,13 +47,13 @@ import java.lang.annotation.Target
         @Override
         protected void doCheck(AnnotationNode annotationToCheck, AnnotatedNode target) {
             AstSpec.currentTest.valueHolder.withDefault { [] }.runs << new Tuple2<>(target, annotationToCheck)
-            switch (validatorAnnotation.value()) {
+            switch (controlAnnotation.value()) {
                 case Type.PASS:
                     break
                 case Type.FAIL:
                     throw new RuntimeException("Type is fail")
                 default:
-                    throw new IllegalStateException("Unknown validator type: " + validatorAnnotation.value())
+                    throw new IllegalStateException("Unknown validator type: " + controlAnnotation.value())
             }
         }
     }
