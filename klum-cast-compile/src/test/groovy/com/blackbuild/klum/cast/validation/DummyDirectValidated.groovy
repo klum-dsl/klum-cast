@@ -23,7 +23,7 @@
  */
 package com.blackbuild.klum.cast.validation
 
-import com.blackbuild.klum.cast.KlumCastValidated
+
 import com.blackbuild.klum.cast.KlumCastValidator
 import com.blackbuild.klum.cast.checks.impl.KlumCastCheck
 import org.codehaus.groovy.ast.AnnotatedNode
@@ -36,7 +36,6 @@ import java.lang.annotation.Target
 
 @Target(ElementType.TYPE)
 @Retention(RetentionPolicy.RUNTIME)
-@KlumCastValidated
 @KlumCastValidator('com.blackbuild.klum.cast.validation.DummyDirectValidated$Check')
 @interface DummyDirectValidated {
 

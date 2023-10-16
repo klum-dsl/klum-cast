@@ -64,6 +64,8 @@ public class KlumCastTransformation extends AbstractASTTransformation implements
 
     @Override
     public void visitClass(ClassNode node) {
+        if (node.isAnnotationDefinition() && !node.getAnnotations(KLUM_CAST_VALIDATED).isEmpty())
+            return;
         visitAnnotations(node);
         node.visitContents(this);
     }
@@ -83,7 +85,7 @@ public class KlumCastTransformation extends AbstractASTTransformation implements
         if (annotation.isBuiltIn()) return false;
         return annotation.getClassNode().getAnnotations().stream()
                 .map(AnnotationNode::getClassNode)
-                .anyMatch(a -> a.equals(KLUM_CAST_VALIDATED));
+                .anyMatch(a -> a.equals(KLUM_CAST_VALIDATED) || a.equals(KLUM_CAST_VALIDATOR));
     }
 
     @Override
