@@ -41,7 +41,7 @@ import java.util.stream.Collectors;
 @Target({ElementType.ANNOTATION_TYPE})
 @Retention(RetentionPolicy.RUNTIME)
 @Repeatable(MutuallyExclusive.List.class)
-@KlumCastValidator(".Check")
+@KlumCastValidator(type = MutuallyExclusive.Check.class)
 @Documented
 public @interface MutuallyExclusive {
     String[] value();
@@ -49,7 +49,9 @@ public @interface MutuallyExclusive {
     class Check extends KlumCastCheck<MutuallyExclusive> {
         @Override
         protected void doCheck(final AnnotationNode annotationToCheck, final AnnotatedNode target) {
-            Collection<String> matchingMembers = Arrays.stream(validatorAnnotation.value()).filter(m -> annotationToCheck.getMembers().containsKey(m)).collect(Collectors.toList());
+            Collection<String> matchingMembers = Arrays.stream(controlAnnotation.value())
+                    .filter(m -> annotationToCheck.getMembers().containsKey(m))
+                    .collect(Collectors.toList());
             if (matchingMembers.size() > 1)
                 throw new RuntimeException("Only one of " + matchingMembers + " may be set");
         }

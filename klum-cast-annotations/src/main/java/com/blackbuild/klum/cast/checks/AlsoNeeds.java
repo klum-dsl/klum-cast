@@ -41,15 +41,19 @@ import java.util.Set;
  */
 @Target(ElementType.METHOD)
 @Retention(RetentionPolicy.RUNTIME)
-@KlumCastValidator(".Check")
+@KlumCastValidator(type = AlsoNeeds.Check.class)
 public @interface AlsoNeeds {
+    /**
+     * The names of the annotation members that need to be used together with the annotated member.
+     * @return the names of the annotation members that need to be used together with the annotated member.
+     */
     String[] value();
 
     class Check extends KlumCastCheck<AlsoNeeds> {
 
         @Override
         protected void doCheck(AnnotationNode annotationToCheck, AnnotatedNode target) {
-            String[] requiredCoMembers = validatorAnnotation.value();
+            String[] requiredCoMembers = controlAnnotation.value();
             Set<String> existingMembers = annotationToCheck.getMembers().keySet();
 
             if (Arrays.stream(requiredCoMembers).noneMatch(existingMembers::contains))

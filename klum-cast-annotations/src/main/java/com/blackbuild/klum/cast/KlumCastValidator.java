@@ -23,20 +23,44 @@
  */
 package com.blackbuild.klum.cast;
 
+import com.blackbuild.klum.cast.checks.impl.KlumCastCheck;
+
 import java.lang.annotation.*;
 
 /**
  * Meta-Annotation that defines the validator to validate the usage of the annotated annotation.
+ * Either value or type must be set, but not both.
  */
 @Target(ElementType.ANNOTATION_TYPE)
 @Retention(RetentionPolicy.RUNTIME)
 @Repeatable(KlumCastValidator.List.class)
 public @interface KlumCastValidator {
-    String value();
+    /**
+     * The validator class to use as fully qualified class name. Must be a subtype of {@link KlumCastCheck}.
+     * @return the validator class to use.
+     */
+    String value() default "";
+
+    /**
+     * The validator class to use. Must be a subtype of {@link KlumCastCheck}.
+     * @return the validator class to use.
+     */
+    Class<? extends KlumCastCheck> type() default None.class;
+
+    /**
+     * Additional parameters to be used for direct validators.
+     * @return additional parameters to be used for direct validators.
+     */
+    String[] parameters() default {};
 
     @Target(ElementType.ANNOTATION_TYPE)
     @Retention(RetentionPolicy.RUNTIME)
     @interface List {
         KlumCastValidator[] value();
     }
+
+    /**
+     * Marker class to indicate that no validator is defined as type.
+     */
+    abstract class None extends KlumCastCheck<Annotation> {}
 }

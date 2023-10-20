@@ -34,10 +34,18 @@ import java.lang.annotation.Annotation;
 import java.lang.annotation.Retention;
 import java.lang.annotation.Target;
 
+/**
+ * The given annotation is only valid if the annotated class or the owning class for members is annotated with the
+ * given annotation.
+ */
 @Target({java.lang.annotation.ElementType.ANNOTATION_TYPE})
 @Retention(java.lang.annotation.RetentionPolicy.RUNTIME)
-@KlumCastValidator(".Check")
+@KlumCastValidator(type = ClassNeedsAnnotation.Check.class)
 public @interface ClassNeedsAnnotation {
+    /**
+     * The annotation that needs to be present on the class.
+     * @return the annotation that needs to be present on the class.
+     */
     Class<? extends Annotation> value();
     String message() default "Annotations annotated with %s are only valid on classes annotated with %s.";
 
@@ -46,8 +54,8 @@ public @interface ClassNeedsAnnotation {
         @Override
         protected void doCheck(AnnotationNode annotationToCheck, AnnotatedNode target) {
             ClassNode realTarget = (target instanceof ClassNode) ? (ClassNode) target : target.getDeclaringClass();
-            if (realTarget.getAnnotations(ClassHelper.make(validatorAnnotation.value())).isEmpty())
-                throw new RuntimeException(String.format(validatorAnnotation.message(), annotationToCheck.getClassNode().getNameWithoutPackage(), validatorAnnotation.value().getSimpleName()));
+            if (realTarget.getAnnotations(ClassHelper.make(controlAnnotation.value())).isEmpty())
+                throw new RuntimeException(String.format(controlAnnotation.message(), annotationToCheck.getClassNode().getNameWithoutPackage(), controlAnnotation.value().getSimpleName()));
         }
     }
 }

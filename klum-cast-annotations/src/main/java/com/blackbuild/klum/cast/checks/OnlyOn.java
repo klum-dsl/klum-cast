@@ -30,9 +30,16 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
+/**
+ * Designates the annotated member of an annotation is only allowed when the annotation is placed on the given element types.
+ */
 @Target(ElementType.METHOD)
 @Retention(RetentionPolicy.RUNTIME)
 @KlumCastValidator("com.blackbuild.klum.cast.checks.impl.MemberTargetFilter")
 public @interface OnlyOn {
+    /**
+     * The element types on which the annotated member is allowed.
+     * @return the element types on which the annotated member is allowed.
+     */
     ElementType[] value();
 }

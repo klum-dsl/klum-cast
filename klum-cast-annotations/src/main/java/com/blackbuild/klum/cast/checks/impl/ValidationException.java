@@ -23,23 +23,37 @@
  */
 package com.blackbuild.klum.cast.checks.impl;
 
-import com.blackbuild.klum.cast.checks.NotTogetherWith;
-import org.codehaus.groovy.ast.AnnotatedNode;
-import org.codehaus.groovy.ast.AnnotationNode;
-import org.codehaus.groovy.ast.ClassNode;
+import org.codehaus.groovy.ast.ASTNode;
 
-import java.util.Arrays;
-import java.util.Set;
-import java.util.stream.Collectors;
+/**
+ * Exception that can be thrown to signal a validation error. Currently the only difference to a normal exception is
+ * the option to provide an ASTNode that is used as the position of the error (which defaults to the validated annotation).
+ */
+public class ValidationException extends Exception {
 
-public class NotTogetherWithCheck extends KlumCastCheck<NotTogetherWith> {
-    @Override
-    protected void doCheck(AnnotationNode annotationToCheck, AnnotatedNode target) {
-        Set<String> forbiddenCoAnnotations = Arrays.stream(controlAnnotation.value()).map(Class::getName).collect(Collectors.toSet());
-        if (target.getAnnotations().stream()
-                .map(AnnotationNode::getClassNode)
-                .map(ClassNode::getName)
-                .anyMatch(forbiddenCoAnnotations::contains))
-            throw new IllegalStateException("Not allowed to use " + annotationToCheck.getClassNode().getName() + " together with " + forbiddenCoAnnotations + ".");
+    private final ASTNode position;
+    public ValidationException(String message) {
+        this(message, null, null);
+    }
+
+    public ValidationException(String message, ASTNode position) {
+        this(message, null, position);
+    }
+
+    public ValidationException(String message, Throwable cause) {
+        this(message, cause, null);
+    }
+
+    public ValidationException(String message, Throwable cause, ASTNode position) {
+        super(message, cause);
+        this.position = position;
+    }
+
+    public ValidationException(Throwable cause) {
+        this(cause.getMessage(), cause, null);
+    }
+
+    public KlumCastCheck.ErrorMessage toError(ASTNode position) {
+        return new KlumCastCheck.ErrorMessage(getMessage(), this.position != null ? this.position : position);
     }
 }

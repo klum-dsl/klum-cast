@@ -34,9 +34,9 @@ public class ParameterTypesCheck extends KlumCastCheck<ParameterTypes> {
     @Override
     protected void doCheck(AnnotationNode annotationToCheck, AnnotatedNode target) {
 
-        Class<?>[] requiredTypes = validatorAnnotation.value();
+        Class<?>[] requiredTypes = controlAnnotation.value();
         MethodNode method = (MethodNode) target;
-        if (validatorAnnotation.strict() && method.getParameters().length != requiredTypes.length)
+        if (controlAnnotation.strict() && method.getParameters().length != requiredTypes.length)
             throw new IllegalStateException(String.format(
                     "Method %s has %d parameters, but exactly %d are required",
                     method.getName(),
@@ -47,6 +47,8 @@ public class ParameterTypesCheck extends KlumCastCheck<ParameterTypes> {
         for (int i = 0; i < method.getParameters().length; i++) {
             if (i >= requiredTypes.length)
                 break;
+            if (requiredTypes[i] == null)
+                continue;
             if (!AstSupport.isAssignable(method.getParameters()[i], requiredTypes[i]))
                 throw new IllegalStateException(String.format(
                         "Parameter %d of method %s is not assignable to %s",

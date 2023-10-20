@@ -40,7 +40,7 @@ import java.lang.annotation.Target;
  */
 @Target({ElementType.ANNOTATION_TYPE})
 @Retention(RetentionPolicy.RUNTIME)
-@KlumCastValidator(".Check")
+@KlumCastValidator(type = MustBeStatic.Check.class)
 public @interface MustBeStatic {
 
     class Check extends KlumCastCheck<MustBeStatic> {
