@@ -25,7 +25,11 @@ package com.blackbuild.klum.cast.checks.impl;
 
 import org.codehaus.groovy.ast.ASTNode;
 
-public class ValidationException extends RuntimeException {
+/**
+ * Exception that can be thrown to signal a validation error. Currently the only difference to a normal exception is
+ * the option to provide an ASTNode that is used as the position of the error (which defaults to the validated annotation).
+ */
+public class ValidationException extends Exception {
 
     private final ASTNode position;
     public ValidationException(String message) {
@@ -49,7 +53,7 @@ public class ValidationException extends RuntimeException {
         this(cause.getMessage(), cause, null);
     }
 
-    public KlumCastCheck.Error toError(ASTNode position) {
-        return new KlumCastCheck.Error(getMessage(), this.position != null ? this.position : position);
+    public KlumCastCheck.ErrorMessage toError(ASTNode position) {
+        return new KlumCastCheck.ErrorMessage(getMessage(), this.position != null ? this.position : position);
     }
 }

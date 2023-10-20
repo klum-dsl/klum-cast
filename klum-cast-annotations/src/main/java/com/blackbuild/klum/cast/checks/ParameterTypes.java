@@ -30,6 +30,11 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
+/**
+ * If the target annotation is placed on a method, the method must have the specified parameter types. Single value
+ * elements can be null to indicate that the parameter type is not checked. If the annotated method has fewer parameters
+ * that the number of specified parameter types, the extra parameter types are ignored unless strict is set to true.
+ */
 @Target(ElementType.ANNOTATION_TYPE)
 @Retention(RetentionPolicy.RUNTIME)
 @KlumCastValidator("com.blackbuild.klum.cast.checks.impl.ParameterTypesCheck")

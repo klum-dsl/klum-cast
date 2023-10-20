@@ -34,10 +34,17 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
+/**
+ * Checks that the annotated methods has exactly the given number of parameters. Note that if the annotated element is no method, the validation is ignored.
+ */
 @Target(ElementType.ANNOTATION_TYPE)
 @Retention(RetentionPolicy.RUNTIME)
 @KlumCastValidator(type = NumberOfParameters.Check.class)
 public @interface NumberOfParameters {
+    /**
+     * The number of parameters the annotated method must have.
+     * @return the number of parameters the annotated method must have.
+     */
     int value();
 
     class Check extends KlumCastCheck<NumberOfParameters> {

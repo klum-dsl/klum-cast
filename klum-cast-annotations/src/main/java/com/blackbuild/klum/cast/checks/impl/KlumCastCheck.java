@@ -64,12 +64,15 @@ public abstract class KlumCastCheck<T extends Annotation> {
 
     /**
      * Performs the actual check. Checks if the check is applicable for the given target and if so,
-     * delegates to the doCheck method, wrapping any exceptions thrown in an Error object.
+     * delegates to the doCheck method, wrapping any exceptions thrown in an ErrorMessage object.
+     * <p>
+     * Usually it is more convenient to override doCheck instead of this method.
+     *
      * @param annotationToCheck The annotation whose placement is validated
      * @param target the target where the annotation to check is placed
-     * @return an Optional Error object if the check failed, empty if the check succeeded
+     * @return an Optional ErrorMessage object if the check failed, empty if the check succeeded
      */
-    public Optional<Error> check(AnnotationNode annotationToCheck, AnnotatedNode target) {
+    public Optional<ErrorMessage> check(AnnotationNode annotationToCheck, AnnotatedNode target) {
         try {
             if (isValidFor(target))
                 doCheck(annotationToCheck, target);
@@ -77,21 +80,36 @@ public abstract class KlumCastCheck<T extends Annotation> {
         } catch (ValidationException e) {
             return Optional.of(e.toError(annotationToCheck));
         } catch (RuntimeException e) {
-            return Optional.of(new Error(e.getMessage(), annotationToCheck));
+            return Optional.of(new ErrorMessage(e.getMessage(), annotationToCheck));
         }
     }
 
+    /**
+     * Checks if the check is applicable for the given target. By default, this is always true, but can be overidden for
+     * quick testing.
+     * @param target The target where the annotation to validate is placed.
+     * @return true if the check is applicable for the given target.
+     */
     protected boolean isValidFor(AnnotatedNode target) {
         return true;
     }
 
+    /**
+     * Performs the actual check. If the check fails, a {@link ValidationException} or any Runtime exception should be thrown.
+     * @param annotationToCheck The annotation whose placement is validated
+     * @param target the target where the annotation to check is placed
+     * @throws ValidationException if the check fails
+     */
     protected abstract void doCheck(AnnotationNode annotationToCheck, AnnotatedNode target) throws ValidationException;
 
-    public static class Error {
+    /**
+     * Encapsulates an error message and the node where the error occurred. Usually needs not to be used directly
+     */
+    public static class ErrorMessage {
         public final String message;
         public final ASTNode node;
 
-        public Error(String message, ASTNode node) {
+        public ErrorMessage(String message, ASTNode node) {
             this.message = message;
             this.node = node;
         }

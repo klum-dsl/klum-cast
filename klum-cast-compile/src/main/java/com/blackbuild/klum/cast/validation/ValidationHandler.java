@@ -39,7 +39,7 @@ public class ValidationHandler {
 
     private final AnnotationNode annotationToValidate;
     private final AnnotatedNode target;
-    private final List<KlumCastCheck.Error> errors = new ArrayList<>();
+    private final List<KlumCastCheck.ErrorMessage> errors = new ArrayList<>();
     private String currentMember;
 
     private Annotation currentAnnotation;
@@ -61,16 +61,16 @@ public class ValidationHandler {
         annotationNode.setNodeMetaData(METADATA_KEY, status);
     }
 
-    public static List<KlumCastCheck.Error> validateAnnotation(AnnotationNode annotationToValidate, AnnotatedNode target) {
+    public static List<KlumCastCheck.ErrorMessage> validateAnnotation(AnnotationNode annotationToValidate, AnnotatedNode target) {
         if (alreadyValidated(annotationToValidate))
             return Collections.emptyList();
         if (!annotationToValidate.getClassNode().isResolved())
-            return Collections.singletonList(new KlumCastCheck.Error("Validated annotation must have already been compiled", annotationToValidate));
+            return Collections.singletonList(new KlumCastCheck.ErrorMessage("Validated annotation must have already been compiled", annotationToValidate));
 
         return new ValidationHandler(annotationToValidate, target).validate();
     }
 
-    private List<KlumCastCheck.Error> validate() {
+    private List<KlumCastCheck.ErrorMessage> validate() {
         doValidate(annotationToValidate.getClassNode().getTypeClass());
         validateAnnotationMembers();
         setStatus(annotationToValidate, Status.VALIDATED);

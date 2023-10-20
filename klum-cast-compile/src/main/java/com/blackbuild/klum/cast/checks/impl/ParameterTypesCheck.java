@@ -47,6 +47,8 @@ public class ParameterTypesCheck extends KlumCastCheck<ParameterTypes> {
         for (int i = 0; i < method.getParameters().length; i++) {
             if (i >= requiredTypes.length)
                 break;
+            if (requiredTypes[i] == null)
+                continue;
             if (!AstSupport.isAssignable(method.getParameters()[i], requiredTypes[i]))
                 throw new IllegalStateException(String.format(
                         "Parameter %d of method %s is not assignable to %s",
