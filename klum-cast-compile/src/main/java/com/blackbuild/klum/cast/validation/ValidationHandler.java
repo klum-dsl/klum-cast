@@ -127,7 +127,7 @@ public class ValidationHandler {
             if (!KlumCastCheck.class.isAssignableFrom(type))
                 throw new IllegalStateException("Class " + validator.value() + " is not a KlumCastCheck.");
             KlumCastCheck<Annotation> check = (KlumCastCheck<Annotation>) InvokerHelper.invokeNoArgumentsConstructorOf(type);
-            check.setValidatorAnnotation(validator);
+            check.setKlumCastValidatorAnnotation(validator);
             check.setControlAnnotation(currentAnnotation);
             check.setMemberName(currentMember);
             check.check(annotationToValidate, target).ifPresent(errors::add);

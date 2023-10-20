@@ -53,7 +53,7 @@ public abstract class KlumCastCheck<T extends Annotation> {
         this.controlAnnotation = controlAnnotation;
     }
 
-    public void setValidatorAnnotation(@NotNull KlumCastValidator validatorAnnotation) {
+    public void setKlumCastValidatorAnnotation(@NotNull KlumCastValidator validatorAnnotation) {
         this.klumCastValidator = validatorAnnotation;
     }
 
