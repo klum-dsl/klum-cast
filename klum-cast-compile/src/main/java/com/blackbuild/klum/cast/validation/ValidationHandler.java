@@ -33,7 +33,10 @@ import org.codehaus.groovy.runtime.InvokerHelper;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.AnnotatedElement;
 import java.lang.reflect.Method;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
 
 public class ValidationHandler {
 
@@ -98,12 +101,14 @@ public class ValidationHandler {
     }
 
     private void handleSingleAnnotation(Annotation annotation) {
+        if (!FilterHandler.isValidFor(annotation, target))
+            return;
         try {
             annotationStack.add(annotation);
             if (annotation instanceof KlumCastValidator) {
                 executeValidator((KlumCastValidator) annotation);
             } else if (isValidated(annotation)) {
-                    doValidate(annotation.annotationType());
+                doValidate(annotation.annotationType());
             }
         } finally {
             annotationStack.remove(annotationStack.size() - 1);
