@@ -23,6 +23,7 @@
  */
 package com.blackbuild.klum.cast.checks;
 
+import com.blackbuild.klum.cast.Filter;
 import com.blackbuild.klum.cast.KlumCastValidator;
 
 import java.lang.annotation.*;
@@ -44,7 +45,7 @@ public @interface NeedsOneOf {
     /**
      * If set, the annotation is only checked when placed on one of the given types.
      */
-    ElementType[] whenOn() default {};
+    @Filter ElementType[] whenOn() default {};
 
     /**
      * If set to true, exactly one of the given members must be set. If set to false, more than one member can be set.

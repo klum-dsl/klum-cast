@@ -28,7 +28,8 @@ import org.codehaus.groovy.control.MultipleCompilationErrorsException
 
 class MustBeStaticTest extends AstSpec {
 
-    def "Static method works"() {
+    @Override
+    def setup() {
         given:
         createClass '''
 @Target([ElementType.METHOD, ElementType.TYPE])
@@ -37,6 +38,9 @@ class MustBeStaticTest extends AstSpec {
 @MustBeStatic
 @interface MyAnnotation {}
 '''
+    }
+
+    def "Static method works"() {
         when:
         createClass '''
 class MyClass {
@@ -56,5 +60,17 @@ class MyClass {
 
         then:
         thrown(MultipleCompilationErrorsException)
+    }
+
+    def "mustBeStatic ignores classes"() {
+        when:
+        createClass '''
+@MyAnnotation
+class MyClass {
+    static List<String> myMethod() { null }
+    }'''
+
+        then:
+        notThrown(MultipleCompilationErrorsException)
     }
 }

@@ -24,7 +24,6 @@
 package com.blackbuild.klum.cast.checks.impl;
 
 import com.blackbuild.klum.cast.checks.NeedsOneOf;
-import com.blackbuild.klum.cast.validation.AstSupport;
 import org.codehaus.groovy.ast.AnnotatedNode;
 import org.codehaus.groovy.ast.AnnotationNode;
 
@@ -40,10 +39,5 @@ public class NeedsOneOfCheck extends KlumCastCheck<NeedsOneOf> {
             throw new RuntimeException("Exactly one of " + Arrays.asList(controlAnnotation.value()) + " must be set");
         if (!controlAnnotation.exclusive() && matchingMembers.isEmpty())
             throw new RuntimeException("At least one of " + Arrays.asList(controlAnnotation.value()) + " must be set");
-    }
-
-    @Override
-    protected boolean isValidFor(AnnotatedNode target) {
-        return AstSupport.matchesOneOf(controlAnnotation.whenOn(), target);
     }
 }

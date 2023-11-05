@@ -58,10 +58,4 @@ public class ParameterTypesCheck extends KlumCastCheck<ParameterTypes> {
                 ));
         }
     }
-
-    @Override
-    protected boolean isValidFor(AnnotatedNode target) {
-        return target instanceof MethodNode;
-    }
-
 }

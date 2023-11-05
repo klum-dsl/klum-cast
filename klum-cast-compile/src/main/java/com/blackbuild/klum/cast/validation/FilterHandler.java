@@ -8,7 +8,10 @@ import java.lang.annotation.Annotation;
 import java.lang.annotation.ElementType;
 import java.lang.reflect.InvocationTargetException;
 
+/** Varios methods for handling filters. */
 public class FilterHandler {
+
+    private FilterHandler() {}
 
     /**
      * Determines if the given annotation is valid for the given target. This is done by checking all
@@ -25,7 +28,7 @@ public class FilterHandler {
                 .allMatch(f -> f.isValidFor(target));
     }
 
-    public static Filter.Function createFrom(Object memberValue, AnnotatedNode target) {
+    private static Filter.Function createFrom(Object memberValue, AnnotatedNode target) {
         if (memberValue instanceof Class) {
             Class<?> filterClass = (Class<?>) memberValue;
             if (Filter.Function.class.isAssignableFrom(filterClass)) {
@@ -65,10 +68,10 @@ public class FilterHandler {
         }
     }
 
-    public static class ElementTypeFilter implements Filter.Function {
+    static class ElementTypeFilter extends Filter.Function {
         private final ElementType[] elementTypes;
 
-        public ElementTypeFilter(ElementType[] elementTypes) {
+        ElementTypeFilter(ElementType[] elementTypes) {
             this.elementTypes = elementTypes;
         }
 

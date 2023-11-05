@@ -37,9 +37,4 @@ public class NeedsReturnTypeCheck extends KlumCastCheck<NeedsReturnType> {
         if (Arrays.stream(controlAnnotation.value()).map(ClassHelper::make).noneMatch(r -> AstSupport.isAssignable(actualReturnType, r)))
             throw new IllegalStateException("Method " + ((MethodNode) target).getName() + " must return one of " + Arrays.toString(controlAnnotation.value()) + ".");
     }
-
-    @Override
-    protected boolean isValidFor(AnnotatedNode target) {
-        return target instanceof MethodNode;
-    }
 }

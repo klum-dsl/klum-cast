@@ -119,11 +119,11 @@ class HueBase extends BaseStation {
 
 The Annotations in the above example all have to follow additional placement rules that need to be checked by the AST-Transformation consuming them:
 
-- Field.members is only valid on Collections and Maps
-- Key and Owner annotations are only valid on classes annotated with @DSL
-- @Key is only valid on String fields
-- @Owner is only valid on fields or on single argument methods
-- @DSL.stripSuffix is only valid on non-final classes
+- `@Field.members` is only valid on Collections and Maps
+- `@Key` and `@Owner` annotations are only valid on classes annotated with `@DSL`
+- `@Key` is only valid on String fields
+- `@Owner` is only valid on fields or on single argument methods
+- `@DSL.stripSuffix` is only valid on non-final classes
 
 
 # Usage
@@ -285,8 +285,26 @@ class NameMustMatchCheck extends KlumCastCheck<NameMustMatch> {
     }
 }
 ```
+### Filtering Checks
 
-Additionally, the method `isValidFor(AnnotatedNode target)` can be overridden quickly skip the check if necessary.
+Filters can be set to determine that a check is only valid in certain condition. This can be done in three ways:
+
+#### KlumCastCheck.isValidFor(AnnotatedNode target)
+By overriding the `isValidFor(AnnotatedNode target)` method, custom checks can be implemented directly in the check implementation.
+
+### KlumCastValidator.validFor()
+
+The KlumCastValidator Annotation has a member `validFor` of type `ElementType[]`. Only if the annotated target is one of the listed types here, the Check is executed.
+
+### @Filter annotation-members on annotations
+
+By annotation a member of an annotation with `@Filter`, that member becomes a filter for its annotation chain. Filter members can either be
+
+- An `ElementType[]`, in which case the filter behaves exactly as `KlumCastValidator.validFor`
+- A Class object containing a subclass of `Filter.Function` which acts as a custom filter
+- A String containing the fully qualified Class-name of the filter implementation
+
+Note that in order for a check to be executed, all checks of the annotation chain must match.
 
 ## Check as inner class
 
