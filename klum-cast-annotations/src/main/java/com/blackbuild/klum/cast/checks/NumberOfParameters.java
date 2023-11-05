@@ -23,6 +23,7 @@
  */
 package com.blackbuild.klum.cast.checks;
 
+import com.blackbuild.klum.cast.Filter;
 import com.blackbuild.klum.cast.KlumCastValidator;
 import com.blackbuild.klum.cast.checks.impl.KlumCastCheck;
 import org.codehaus.groovy.ast.AnnotatedNode;
@@ -39,7 +40,7 @@ import java.lang.annotation.Target;
  */
 @Target(ElementType.ANNOTATION_TYPE)
 @Retention(RetentionPolicy.RUNTIME)
-@KlumCastValidator(type = NumberOfParameters.Check.class)
+@KlumCastValidator(type = NumberOfParameters.Check.class, validFor = Filter.Methods.class)
 public @interface NumberOfParameters {
     /**
      * The number of parameters the annotated method must have.
@@ -51,11 +52,9 @@ public @interface NumberOfParameters {
 
         @Override
         protected void doCheck(AnnotationNode annotationToCheck, AnnotatedNode target) {
-            if (target instanceof MethodNode) {
-                MethodNode methodNode = (MethodNode) target;
-                if (methodNode.getParameters().length != controlAnnotation.value())
-                    throw new RuntimeException("Method " + methodNode.getName() + " must have " + controlAnnotation.value() + " parameters.");
-            }
+            MethodNode methodNode = (MethodNode) target;
+            if (methodNode.getParameters().length != controlAnnotation.value())
+                throw new RuntimeException("Method " + methodNode.getName() + " must have " + controlAnnotation.value() + " parameters.");
         }
     }
 }

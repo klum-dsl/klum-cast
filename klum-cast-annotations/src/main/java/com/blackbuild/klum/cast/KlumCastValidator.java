@@ -30,6 +30,9 @@ import java.lang.annotation.*;
 /**
  * Meta-Annotation that defines the validator to validate the usage of the annotated annotation.
  * Either value or type must be set, but not both.
+ * <p>
+ *     The validFor parameter can be used to restrict the usage of the validator to certain elements.
+ * </p>
  */
 @Target(ElementType.ANNOTATION_TYPE)
 @Retention(RetentionPolicy.RUNTIME)
@@ -52,6 +55,12 @@ public @interface KlumCastValidator {
      * @return additional parameters to be used for direct validators.
      */
     String[] parameters() default {};
+
+    /**
+     * The elements the validator is valid for.
+     * @return the elements the validator is valid for.
+     */
+    @Filter Class<? extends Filter.Function> validFor() default Filter.All.class;
 
     @Target(ElementType.ANNOTATION_TYPE)
     @Retention(RetentionPolicy.RUNTIME)

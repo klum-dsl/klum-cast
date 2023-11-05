@@ -33,7 +33,10 @@ import org.codehaus.groovy.runtime.InvokerHelper;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.AnnotatedElement;
 import java.lang.reflect.Method;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
 
 public class ValidationHandler {
 
@@ -42,7 +45,7 @@ public class ValidationHandler {
     private final List<KlumCastCheck.ErrorMessage> errors = new ArrayList<>();
     private String currentMember;
 
-    private Annotation currentAnnotation;
+    private List<Annotation> annotationStack = new ArrayList<>();
 
     public enum Status { VALIDATED }
 
@@ -98,16 +101,17 @@ public class ValidationHandler {
     }
 
     private void handleSingleAnnotation(Annotation annotation) {
-        if (annotation instanceof KlumCastValidator) {
-            executeValidator((KlumCastValidator) annotation);
-        } else if (isValidated(annotation)) {
-            Annotation previousAnnotation = currentAnnotation;
-            try {
-                currentAnnotation = annotation;
+        if (!FilterHandler.isValidFor(annotation, target))
+            return;
+        try {
+            annotationStack.add(annotation);
+            if (annotation instanceof KlumCastValidator) {
+                executeValidator((KlumCastValidator) annotation);
+            } else if (isValidated(annotation)) {
                 doValidate(annotation.annotationType());
-            } finally {
-                currentAnnotation = previousAnnotation;
             }
+        } finally {
+            annotationStack.remove(annotationStack.size() - 1);
         }
     }
 
@@ -127,8 +131,7 @@ public class ValidationHandler {
             if (!KlumCastCheck.class.isAssignableFrom(type))
                 throw new IllegalStateException("Class " + validator.value() + " is not a KlumCastCheck.");
             KlumCastCheck<Annotation> check = (KlumCastCheck<Annotation>) InvokerHelper.invokeNoArgumentsConstructorOf(type);
-            check.setKlumCastValidatorAnnotation(validator);
-            check.setControlAnnotation(currentAnnotation);
+            check.setAnnotationStack(Collections.unmodifiableList(annotationStack));
             check.setMemberName(currentMember);
             check.check(annotationToValidate, target).ifPresent(errors::add);
         } catch (ClassNotFoundException e) {

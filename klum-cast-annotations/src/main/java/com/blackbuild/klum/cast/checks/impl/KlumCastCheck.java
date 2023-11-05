@@ -31,6 +31,7 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.lang.annotation.Annotation;
+import java.util.List;
 import java.util.Optional;
 
 /**
@@ -48,13 +49,12 @@ public abstract class KlumCastCheck<T extends Annotation> {
     @Nullable protected T controlAnnotation;
     @Nullable protected String memberName;
     @NotNull protected KlumCastValidator klumCastValidator;
+    @NotNull protected List<T> annotationStack;
 
-    public void setControlAnnotation(@Nullable T controlAnnotation) {
-        this.controlAnnotation = controlAnnotation;
-    }
-
-    public void setKlumCastValidatorAnnotation(@NotNull KlumCastValidator validatorAnnotation) {
-        this.klumCastValidator = validatorAnnotation;
+    public void setAnnotationStack(List<T> annotationStack) {
+        this.annotationStack = annotationStack.subList(0, annotationStack.size() - 1);
+        klumCastValidator = (KlumCastValidator) annotationStack.get(annotationStack.size() - 1);
+        controlAnnotation = annotationStack.size() > 1 ? annotationStack.get(annotationStack.size() - 2) : null;
     }
 
     public void setMemberName(@Nullable String memberName) {
