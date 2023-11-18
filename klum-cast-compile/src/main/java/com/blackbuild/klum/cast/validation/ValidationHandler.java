@@ -45,13 +45,13 @@ public class ValidationHandler {
     private final List<KlumCastCheck.ErrorMessage> errors = new ArrayList<>();
     private String currentMember;
 
-    private List<Annotation> annotationStack = new ArrayList<>();
+    private final List<Annotation> annotationStack = new ArrayList<>();
 
     public enum Status { VALIDATED }
 
     public static final String METADATA_KEY = ValidationHandler.class.getName();
 
-    private ValidationHandler(AnnotationNode annotationToValidate, AnnotatedNode target) {
+    ValidationHandler(AnnotationNode annotationToValidate, AnnotatedNode target) {
         this.annotationToValidate = annotationToValidate;
         this.target = target;
     }
@@ -100,7 +100,7 @@ public class ValidationHandler {
                 .forEach(this::handleSingleAnnotation);
     }
 
-    private void handleSingleAnnotation(Annotation annotation) {
+    void handleSingleAnnotation(Annotation annotation) {
         if (!FilterHandler.isValidFor(annotation, target))
             return;
         try {
@@ -137,5 +137,9 @@ public class ValidationHandler {
         } catch (ClassNotFoundException e) {
             throw new IllegalStateException("Could not create instance of KlumCastCheck " + validator.value(), e);
         }
+    }
+
+    List<KlumCastCheck.ErrorMessage> getErrors() {
+        return errors;
     }
 }
