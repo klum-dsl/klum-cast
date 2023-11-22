@@ -33,7 +33,7 @@ import java.lang.annotation.Target;
 
 /**
  * If the validated annotation is placed on a field, the type of that field
- * must match value(). Has no effect, if the annotation is placed on any other element.
+ * must match value(). Has no effect if the annotation is placed on any other element.
  */
 @Target({ElementType.ANNOTATION_TYPE})
 @Retention(RetentionPolicy.RUNTIME)
