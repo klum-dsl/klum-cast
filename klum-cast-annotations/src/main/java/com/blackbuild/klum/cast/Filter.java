@@ -58,6 +58,8 @@ public @interface Filter {
 
     /** Default filter that always matches */
     class All extends Function {
+
+        public static final Function INSTANCE = new All();
         @Override
         public boolean isValidFor(AnnotatedNode target) {
             return true;

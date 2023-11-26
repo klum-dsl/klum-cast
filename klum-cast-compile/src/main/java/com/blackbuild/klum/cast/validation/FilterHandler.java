@@ -55,32 +55,34 @@ public class FilterHandler {
         if (memberValue instanceof Class) {
             Class<?> filterClass = (Class<?>) memberValue;
             if (Filter.Function.class.isAssignableFrom(filterClass)) {
-                return doCreateFrom(filterClass);
+                return doCreateFromType(filterClass);
             } else {
                 throw new IllegalStateException("Filter class " + filterClass.getName() + " does not implement " + Filter.Function.class.getName());
             }
         } else if (memberValue instanceof String) {
-            return doCreateFrom((String) memberValue, target);
+            return doCreateFromTypeName((String) memberValue, target);
         } else if (memberValue instanceof ElementType[]) {
-            return doCreateFrom((ElementType[]) memberValue);
+            return doCreateFromElementTypes((ElementType[]) memberValue);
         } else {
             throw new IllegalStateException("Filter value must be a class, a string or an array of ElementType");
         }
     }
 
-    private static Filter.Function doCreateFrom(ElementType[] memberValue) {
+    private static Filter.Function doCreateFromElementTypes(ElementType[] memberValue) {
+        if (memberValue.length == 0) return Filter.All.INSTANCE;
         return new ElementTypeFilter(memberValue);
     }
 
-    private static Filter.Function doCreateFrom(String memberValue, AnnotatedNode target) {
+    private static Filter.Function doCreateFromTypeName(String memberValue, AnnotatedNode target) {
         try {
-            return doCreateFrom(Class.forName(memberValue, true, AstSupport.getTargetClassLoader(target)));
+            if (memberValue.isBlank()) return Filter.All.INSTANCE;
+            return doCreateFromType(Class.forName(memberValue, true, AstSupport.getTargetClassLoader(target)));
         } catch (ClassNotFoundException e) {
             throw new IllegalStateException("Could not load filter class " + memberValue, e);
         }
     }
 
-    private static Filter.Function doCreateFrom(Class<?> filterClass) {
+    private static Filter.Function doCreateFromType(Class<?> filterClass) {
         if (!Filter.Function.class.isAssignableFrom(filterClass))
             throw new IllegalStateException("Filter class " + filterClass.getName() + " does not implement " + Filter.Function.class.getName());
 
@@ -103,5 +105,4 @@ public class FilterHandler {
             return AstSupport.matchesOneOf(elementTypes, target);
         }
     }
-
 }

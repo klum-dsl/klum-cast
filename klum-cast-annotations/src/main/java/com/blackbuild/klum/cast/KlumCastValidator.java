@@ -57,10 +57,22 @@ public @interface KlumCastValidator {
     String[] parameters() default {};
 
     /**
-     * The elements the validator is valid for.
+     * The elements the validator is valid for as a filter implementation. Default means no filter.
      * @return the elements the validator is valid for.
      */
     @Filter Class<? extends Filter.Function> validFor() default Filter.All.class;
+
+    /**
+     * The elements the validator is valid for as a filter implementation type name. Empty string means no filter.
+     * @return the elements the validator is valid for.
+     */
+    @Filter String validForType() default "";
+
+    /**
+     * The elements the validator is valid for. Empty array (default) means all elements.
+     * @return the elements the validator is valid for.
+     */
+    @Filter ElementType[] validForTargets() default {};
 
     @Target(ElementType.ANNOTATION_TYPE)
     @Retention(RetentionPolicy.RUNTIME)
