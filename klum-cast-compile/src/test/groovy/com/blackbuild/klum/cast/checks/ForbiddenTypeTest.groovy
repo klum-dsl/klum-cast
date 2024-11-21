@@ -26,7 +26,7 @@ package com.blackbuild.klum.cast.checks
 import com.blackbuild.klum.cast.validation.AstSpec
 import org.codehaus.groovy.control.MultipleCompilationErrorsException
 
-class NeedsTypeTest extends AstSpec {
+class ForbiddenTypeTest extends AstSpec {
 
     def "Simple type works"() {
         given:
@@ -34,7 +34,7 @@ class NeedsTypeTest extends AstSpec {
 @Target([ElementType.METHOD, ElementType.TYPE, ElementType.FIELD])
 @Retention(RetentionPolicy.RUNTIME)
 @KlumCastValidated
-@NeedsType(List)
+@ForbiddenType(List)
 @interface MyAnnotation {}
 '''
 
@@ -42,7 +42,7 @@ class NeedsTypeTest extends AstSpec {
             createClass '''
 class MyClass {
     @MyAnnotation
-    List<String> myField
+    String myField
 }'''
             then:
             notThrown(MultipleCompilationErrorsException)
@@ -54,13 +54,13 @@ class MyClass {
     ArrayList<String> myField
 }'''
             then:
-            notThrown(MultipleCompilationErrorsException)
+            thrown(MultipleCompilationErrorsException)
 
             when: 'type does not match'
             createClass '''
 class MyClass {
     @MyAnnotation
-    String myField
+    List<String> myField
 }'''
             then:
             thrown(MultipleCompilationErrorsException)
@@ -68,11 +68,11 @@ class MyClass {
 
     def "primitive type works"() {
         given:
-        createClass '''import java.lang.annotation.ElementType
-@Target([ElementType.METHOD, ElementType.TYPE, ElementType.FIELD])
+        createClass '''
+@Target([ElementType.METHOD, ElementType.TYPE])
 @Retention(RetentionPolicy.RUNTIME)
 @KlumCastValidated
-@NeedsType(Integer)
+@ForbiddenType(Integer)
 @interface MyAnnotation {}
 '''
 
@@ -83,7 +83,7 @@ class MyClass {
     int myField
 }'''
             then:
-            notThrown(MultipleCompilationErrorsException)
+            thrown(MultipleCompilationErrorsException)
     }
 
 }
