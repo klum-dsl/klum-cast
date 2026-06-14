@@ -225,10 +225,14 @@ The NotOn annotation is used to specify that a certain annotation member should 
 
 The OnlyOn annotation is used to specify that a certain annotation member should only be used on a specific element type. It can only be used on annotation members.
 
+#### @NeedsModifiers and @ForbiddenModifiers
+
+Can be use to designate that an annotation can only be placed on targets with or without certain modifiers.
+
 ## Nested annotations
 
 Validation annotations can themselves be aggregations of multiple annotations. This is useful if a combination of validations is used multiple times. Or to give 
-an annotation a domain specific name.
+an annotation a domain-specific name.
 
 Note that Target and Retention annotations are omitted in the examples below for brevity.
 

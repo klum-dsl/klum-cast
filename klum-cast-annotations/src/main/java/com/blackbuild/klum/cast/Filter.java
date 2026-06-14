@@ -88,4 +88,11 @@ public @interface Filter {
             return target instanceof org.codehaus.groovy.ast.ClassNode;
         }
     }
+    /** Filter that matches if the annotated element is a Class */
+    class InnerClasses extends Function {
+        @Override
+        public boolean isValidFor(AnnotatedNode target) {
+            return target instanceof org.codehaus.groovy.ast.InnerClassNode;
+        }
+    }
 }
