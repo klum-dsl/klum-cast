@@ -51,6 +51,9 @@ public class AstSupport {
         if (PropertyNode.class.isAssignableFrom(nodeType))
             return ElementType.FIELD;
 
+        if (InnerClassNode.class.isAssignableFrom(nodeType))
+            return ElementType.TYPE;
+
         return elementTypeToNodeType.entrySet().stream()
                 .filter(e -> e.getValue().equals(nodeType))
                 .map(Map.Entry::getKey)
