@@ -10,6 +10,9 @@
 ## Reasoned commits
 
 - Make each commit one self-contained reasoning step with a concise imperative subject.
+- Treat commit subjects and bodies as GitHub issue-linking input. Do not place a GitHub closing keyword before an issue
+  reference unless merging that commit is intended to close the issue automatically; negated wording can still trigger
+  GitHub's pattern matching. Use neutral issue references as described in `docs/agents/pull-requests.md`.
 - Keep a test and the production change that makes it pass in the same commit.
 - Run the relevant verification before each commit. A deliberately transitional commit must make the reasoning clearer,
   be repaired immediately, and explain the boundary.
