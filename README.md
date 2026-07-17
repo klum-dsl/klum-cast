@@ -47,6 +47,37 @@ must be declared by that code, and use `{{` and `}}` for literal braces. In a co
 applicable override wins. Unknown codes, unknown placeholder names, malformed templates, and missing arguments are
 technical configuration failures, not invalid annotation uses.
 
+## Boolean composition migration
+
+`@OneCheckMustMatch` is the delivered 0.4 OR strategy. Declare its branch validation annotations directly on the
+composed validation annotation; no annotation-valued branch members or branch reflection are used by new source.
+
+```groovy
+@Target(ElementType.ANNOTATION_TYPE)
+@Retention(RetentionPolicy.RUNTIME)
+@KlumCastValidated
+@OneCheckMustMatch(message = 'A closure needs a return type or one parameter')
+@NumberOfParameters(1)
+@NeedsReturnType(Closure)
+@interface ClosureOrSingleParameter {}
+
+@Target(ElementType.TYPE)
+@Retention(RetentionPolicy.RUNTIME)
+@KlumCastValidated
+@ClosureOrSingleParameter
+@interface CheckedClosure {}
+```
+
+The engine evaluates branches eagerly in ascending annotation-type-name order. A filtered branch is not a match; OR
+passes when any applicable branch passes, fails when all applicable branches fail, and is not applicable when it has no
+applicable branches (including zero branches). On failure, every failing branch diagnostic is retained in order and an
+engine-owned `klum-cast.composition.or.no-match` summary is added. `message` changes only that summary, so it cannot
+hide branch positions, codes, causes, or provenance. Unexpected branch exceptions remain technical failures.
+
+Existing `@OneCheckMustMatch` declarations with annotation-valued branch members continue to work as a deprecated binary
+migration bridge. Recompile them using direct branch annotations. AND and XOR have documented semantics but no public
+0.4 syntax yet; conditional composition is outside this release slice.
+
 KlumCast emits one native Groovy compiler error per returned diagnostic, including its code and primary-node position.
 Related locations plus binding and composition-path information are rendered as supplementary context. Returned
 diagnostics are emitted deterministically in source and binding order.
