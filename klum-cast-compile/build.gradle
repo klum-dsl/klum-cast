@@ -15,3 +15,39 @@ dependencies {
     }
     testImplementation "org.jetbrains:annotations:16.0.2"
 }
+
+tasks.register('verifyModuleFeasibility') {
+    group = 'verification'
+    description = 'Inspects published artifacts and exercises the module-path feasibility consumer fixture.'
+    dependsOn ':klum-cast-annotations:jar', ':klum-cast-spi:jar', ':klum-cast-compile:jar'
+
+    def fixture = rootProject.file('docs/implementation/prototypes/module-path')
+    inputs.dir(fixture)
+    inputs.files(
+            project(':klum-cast-annotations').tasks.named('jar'),
+            project(':klum-cast-spi').tasks.named('jar'),
+            tasks.named('jar')
+    )
+
+    doLast {
+        def groovyJar = configurations.testRuntimeClasspath.files.find {
+            it.name == "groovy-${rootProject.ext.groovyVersion}.jar"
+        }
+        if (groovyJar == null)
+            throw new GradleException("Could not locate Groovy ${rootProject.ext.groovyVersion} on the test runtime classpath")
+
+        exec {
+            commandLine 'bash', new File(fixture, 'run.sh').absolutePath
+            environment 'ANNOTATIONS_JAR', project(':klum-cast-annotations').tasks.named('jar').get().archiveFile.get().asFile
+            environment 'SPI_JAR', project(':klum-cast-spi').tasks.named('jar').get().archiveFile.get().asFile
+            environment 'COMPILER_JAR', tasks.named('jar').get().archiveFile.get().asFile
+            environment 'GROOVY_JAR', groovyJar
+            environment 'GROOVY_VERSION', rootProject.ext.groovyVersion
+            environment 'FIXTURE_BUILD_DIR', new File(buildDir, 'module-feasibility')
+        }
+    }
+}
+
+tasks.named('check') {
+    dependsOn tasks.named('verifyModuleFeasibility')
+}
