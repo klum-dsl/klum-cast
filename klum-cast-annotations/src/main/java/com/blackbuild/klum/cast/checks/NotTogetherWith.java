@@ -50,7 +50,7 @@ import java.lang.annotation.*;
  */
 @Target({ElementType.ANNOTATION_TYPE})
 @Retention(RetentionPolicy.RUNTIME)
-@KlumCastValidator("com.blackbuild.klum.cast.checks.impl.NotTogetherWithCheck")
+@KlumCastValidator("com.blackbuild.klum.cast.compiler.internal.checks.NotTogetherWithCheck")
 public @interface NotTogetherWith {
     /**
      * The annotations that should not be used together with the annotated annotation.

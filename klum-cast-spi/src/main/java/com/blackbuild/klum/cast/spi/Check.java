@@ -21,26 +21,24 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.blackbuild.klum.cast.checks;
+package com.blackbuild.klum.cast.spi;
 
-import com.blackbuild.klum.cast.KlumCastValidator;
-
-import java.lang.annotation.Annotation;
-import java.lang.annotation.Retention;
-import java.lang.annotation.Target;
+import java.util.List;
 
 /**
- * The given annotation is only valid if the annotated class or the owning class for members is annotated with the
- * given annotation.
+ * Validates one use of a validated annotation.
+ *
+ * <p>Implementations must have an accessible no-argument constructor and must be stateless. The compiler owns their
+ * lifecycle and may reuse an instance within one compilation, but never across compilation runs. A returned diagnostic
+ * describes an expected constraint violation; thrown exceptions are technical failures and retain their cause.</p>
  */
-@Target({java.lang.annotation.ElementType.ANNOTATION_TYPE})
-@Retention(java.lang.annotation.RetentionPolicy.RUNTIME)
-@KlumCastValidator("com.blackbuild.klum.cast.compiler.internal.checks.ClassNeedsAnnotationCheck")
-public @interface ClassNeedsAnnotation {
+public interface Check {
+
     /**
-     * The annotation that needs to be present on the class.
-     * @return the annotation that needs to be present on the class.
+     * Evaluates this check for one immutable invocation context.
+     *
+     * @param context the invocation data
+     * @return zero or more expected constraint diagnostics
      */
-    Class<? extends Annotation> value();
-    String message() default "Annotations annotated with %s are only valid on classes annotated with %s.";
+    List<Diagnostic> check(CheckContext context);
 }

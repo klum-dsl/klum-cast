@@ -21,26 +21,31 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.blackbuild.klum.cast.checks;
+package com.blackbuild.klum.cast.spi;
 
-import com.blackbuild.klum.cast.KlumCastValidator;
+import org.codehaus.groovy.ast.ASTNode;
 
-import java.lang.annotation.Annotation;
-import java.lang.annotation.Retention;
-import java.lang.annotation.Target;
+import java.util.Objects;
 
 /**
- * The given annotation is only valid if the annotated class or the owning class for members is annotated with the
- * given annotation.
+ * An immutable expected constraint violation.
+ *
+ * <p>This initial SPI seam carries the stable check-scoped code, rendered message and primary source position. Message
+ * templates, arguments, related nodes and provenance presentation remain owned by issue #17.</p>
  */
-@Target({java.lang.annotation.ElementType.ANNOTATION_TYPE})
-@Retention(java.lang.annotation.RetentionPolicy.RUNTIME)
-@KlumCastValidator("com.blackbuild.klum.cast.compiler.internal.checks.ClassNeedsAnnotationCheck")
-public @interface ClassNeedsAnnotation {
-    /**
-     * The annotation that needs to be present on the class.
-     * @return the annotation that needs to be present on the class.
-     */
-    Class<? extends Annotation> value();
-    String message() default "Annotations annotated with %s are only valid on classes annotated with %s.";
+public final class Diagnostic {
+
+    private final String code;
+    private final String message;
+    private final ASTNode primaryNode;
+
+    public Diagnostic(String code, String message, ASTNode primaryNode) {
+        this.code = Objects.requireNonNull(code, "code");
+        this.message = Objects.requireNonNull(message, "message");
+        this.primaryNode = Objects.requireNonNull(primaryNode, "primaryNode");
+    }
+
+    public String getCode() { return code; }
+    public String getMessage() { return message; }
+    public ASTNode getPrimaryNode() { return primaryNode; }
 }

@@ -21,26 +21,25 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.blackbuild.klum.cast.checks;
-
-import com.blackbuild.klum.cast.KlumCastValidator;
+package com.blackbuild.klum.cast.spi;
 
 import java.lang.annotation.Annotation;
-import java.lang.annotation.Retention;
-import java.lang.annotation.Target;
+import java.util.Objects;
 
-/**
- * The given annotation is only valid if the annotated class or the owning class for members is annotated with the
- * given annotation.
- */
-@Target({java.lang.annotation.ElementType.ANNOTATION_TYPE})
-@Retention(java.lang.annotation.RetentionPolicy.RUNTIME)
-@KlumCastValidator("com.blackbuild.klum.cast.compiler.internal.checks.ClassNeedsAnnotationCheck")
-public @interface ClassNeedsAnnotation {
-    /**
-     * The annotation that needs to be present on the class.
-     * @return the annotation that needs to be present on the class.
-     */
-    Class<? extends Annotation> value();
-    String message() default "Annotations annotated with %s are only valid on classes annotated with %s.";
+/** Immutable identity of the declarative binding that selected a check. */
+public final class BindingMetadata {
+
+    private final Annotation declaration;
+    private final Class<? extends Check> checkType;
+    private final String implementationName;
+
+    public BindingMetadata(Annotation declaration, Class<? extends Check> checkType, String implementationName) {
+        this.declaration = Objects.requireNonNull(declaration, "declaration");
+        this.checkType = Objects.requireNonNull(checkType, "checkType");
+        this.implementationName = Objects.requireNonNull(implementationName, "implementationName");
+    }
+
+    public Annotation getDeclaration() { return declaration; }
+    public Class<? extends Check> getCheckType() { return checkType; }
+    public String getImplementationName() { return implementationName; }
 }

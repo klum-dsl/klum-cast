@@ -24,8 +24,6 @@
 package com.blackbuild.klum.cast.checks;
 
 import com.blackbuild.klum.cast.KlumCastValidator;
-import com.blackbuild.klum.cast.checks.impl.KlumCastCheck;
-import org.codehaus.groovy.ast.*;
 
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
@@ -37,24 +35,5 @@ import java.lang.annotation.Target;
  */
 @Target(ElementType.ANNOTATION_TYPE)
 @Retention(RetentionPolicy.RUNTIME)
-@KlumCastValidator(type = UniquePerClass.Check.class)
-public @interface UniquePerClass {
-    class Check extends KlumCastCheck<UniquePerClass> {
-
-        private static final String METADATA_KEY = UniquePerClass.class.getName();
-
-        @Override
-        protected void doCheck(AnnotationNode annotationToCheck, AnnotatedNode target) {
-            ClassNode classNode = getClassNode(target);
-            AnnotatedNode existingEntry = classNode.getNodeMetaData(METADATA_KEY);
-            if (existingEntry != null)
-                throw new IllegalStateException("Annotation " + annotationToCheck.getClassNode().getName() + " is used multiple times in class " + classNode.getName());
-
-            classNode.setNodeMetaData(METADATA_KEY, target);
-        }
-
-        private ClassNode getClassNode(AnnotatedNode target) {
-            return target instanceof ClassNode ? (ClassNode) target : target.getDeclaringClass();
-        }
-    }
-}
+@KlumCastValidator("com.blackbuild.klum.cast.compiler.internal.checks.UniquePerClassCheck")
+public @interface UniquePerClass {}

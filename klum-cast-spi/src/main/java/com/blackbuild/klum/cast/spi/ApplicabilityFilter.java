@@ -21,26 +21,20 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.blackbuild.klum.cast.checks;
-
-import com.blackbuild.klum.cast.KlumCastValidator;
-
-import java.lang.annotation.Annotation;
-import java.lang.annotation.Retention;
-import java.lang.annotation.Target;
+package com.blackbuild.klum.cast.spi;
 
 /**
- * The given annotation is only valid if the annotated class or the owning class for members is annotated with the
- * given annotation.
+ * Determines whether a validation binding applies to an invocation.
+ *
+ * <p>Filters are stateless and have the same no-argument-constructor lifecycle as {@link Check} implementations.
+ * A {@code false} result means not applicable, not a successful check result. Multiple filters on one binding are
+ * conjunctive.</p>
  */
-@Target({java.lang.annotation.ElementType.ANNOTATION_TYPE})
-@Retention(java.lang.annotation.RetentionPolicy.RUNTIME)
-@KlumCastValidator("com.blackbuild.klum.cast.compiler.internal.checks.ClassNeedsAnnotationCheck")
-public @interface ClassNeedsAnnotation {
+public interface ApplicabilityFilter {
+
     /**
-     * The annotation that needs to be present on the class.
-     * @return the annotation that needs to be present on the class.
+     * @param context the immutable invocation data
+     * @return {@code true} when the binding applies
      */
-    Class<? extends Annotation> value();
-    String message() default "Annotations annotated with %s are only valid on classes annotated with %s.";
+    boolean appliesTo(CheckContext context);
 }

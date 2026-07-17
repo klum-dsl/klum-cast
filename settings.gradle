@@ -1,3 +1,4 @@
 rootProject.name = 'klum-cast-root'
 include 'klum-cast-annotations'
+include 'klum-cast-spi'
 include 'klum-cast-compile'

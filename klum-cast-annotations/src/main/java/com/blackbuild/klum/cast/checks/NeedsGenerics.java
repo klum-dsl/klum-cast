@@ -35,7 +35,7 @@ import java.lang.annotation.*;
  */
 @Target({ElementType.ANNOTATION_TYPE})
 @Retention(RetentionPolicy.RUNTIME)
-@KlumCastValidator("com.blackbuild.klum.cast.checks.impl.NeedsGenericsCheck")
+@KlumCastValidator("com.blackbuild.klum.cast.compiler.internal.checks.NeedsGenericsCheck")
 @Repeatable(NeedsGenerics.List.class)
 public @interface NeedsGenerics {
     /**

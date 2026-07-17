@@ -23,8 +23,6 @@
  */
 package com.blackbuild.klum.cast;
 
-import com.blackbuild.klum.cast.checks.impl.KlumCastCheck;
-
 import java.lang.annotation.*;
 
 /**
@@ -39,16 +37,18 @@ import java.lang.annotation.*;
 @Repeatable(KlumCastValidator.List.class)
 public @interface KlumCastValidator {
     /**
-     * The validator class to use as fully qualified class name. Must be a subtype of {@link KlumCastCheck}.
+     * The check implementation as a fully qualified class name. It must implement the SPI {@code Check} interface.
      * @return the validator class to use.
      */
     String value() default "";
 
     /**
-     * The validator class to use. Must be a subtype of {@link KlumCastCheck}.
+     * Deprecated raw compatibility bridge for a typed check binding. New declarations should use
+     * {@code com.blackbuild.klum.cast.spi.CheckBinding}.
      * @return the validator class to use.
      */
-    Class<? extends KlumCastCheck> type() default None.class;
+    @Deprecated
+    Class<?> type() default None.class;
 
     /**
      * Additional parameters to be used for direct validators.
@@ -60,7 +60,8 @@ public @interface KlumCastValidator {
      * The elements the validator is valid for as a filter implementation. Default means no filter.
      * @return the elements the validator is valid for.
      */
-    @Filter Class<? extends Filter.Function> validFor() default Filter.All.class;
+    @Deprecated
+    @Filter Class<?> validFor() default None.class;
 
     /**
      * The elements the validator is valid for as a filter implementation type name. Empty string means no filter.
@@ -83,5 +84,5 @@ public @interface KlumCastValidator {
     /**
      * Marker class to indicate that no validator is defined as type.
      */
-    abstract class None extends KlumCastCheck<Annotation> {}
+    final class None {}
 }

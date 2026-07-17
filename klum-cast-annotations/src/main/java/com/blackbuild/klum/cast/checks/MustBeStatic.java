@@ -23,12 +23,7 @@
  */
 package com.blackbuild.klum.cast.checks;
 
-import com.blackbuild.klum.cast.Filter;
 import com.blackbuild.klum.cast.KlumCastValidator;
-import com.blackbuild.klum.cast.checks.impl.KlumCastCheck;
-import org.codehaus.groovy.ast.AnnotatedNode;
-import org.codehaus.groovy.ast.AnnotationNode;
-import org.codehaus.groovy.ast.MethodNode;
 
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
@@ -41,15 +36,5 @@ import java.lang.annotation.Target;
  */
 @Target({ElementType.ANNOTATION_TYPE})
 @Retention(RetentionPolicy.RUNTIME)
-@KlumCastValidator(type = MustBeStatic.Check.class, validFor = Filter.Methods.class)
-public @interface MustBeStatic {
-    class Check extends KlumCastCheck<MustBeStatic> {
-
-        @Override
-        protected void doCheck(AnnotationNode annotationToCheck, AnnotatedNode target) {
-            if (!((MethodNode) target).isStatic())
-                throw new IllegalStateException("Annotation " + annotationToCheck.getClassNode().getName() + " must be placed on a static method.");
-        }
-    }
-
-}
+@KlumCastValidator(value = "com.blackbuild.klum.cast.compiler.internal.checks.MustBeStaticCheck", validForTargets = ElementType.METHOD)
+public @interface MustBeStatic {}
