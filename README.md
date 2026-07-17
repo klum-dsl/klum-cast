@@ -37,6 +37,23 @@ bridges will be removed for 1.0.
 Diagnostic template syntax, message overrides, related locations, and boolean-composition semantics are not part of
 this migration slice. They remain work for issues #17 and #22 respectively.
 
+## Java modules and classpaths
+
+The 0.4 artifacts retain classpath support and publish stable automatic module names:
+
+- `com.blackbuild.klum.cast.annotations`
+- `com.blackbuild.klum.cast.spi`
+- `com.blackbuild.klum.cast.compiler`
+
+The compiler artifact continues to discover its global Groovy AST transformation through its service descriptor when it
+is on the compilation classpath. Its packages are intentionally separate from annotations and SPI; consumers must not
+rely on compiler implementation packages as API.
+
+KlumCast does not currently publish explicit `module-info.java` descriptors. The repository-owned JDK 11 fixture proves
+the automatic-module and classpath contracts in Groovy 2.4, 3, and 4, but Groovy 2.4 itself is not usable on the Java
+module path. The fixture therefore treats explicit descriptors as infeasible for the current support matrix without
+workarounds. This is not a support-matrix change; see issue #13 and KlumAST #455 for that separate decision.
+
 # Overview
 
 KlumCast is validator for annotation placement for Groovy based schemas. It allows to conveniently validate AST driving annotations before the actual transformation is performed and thus helps keep the transformation code clean.
