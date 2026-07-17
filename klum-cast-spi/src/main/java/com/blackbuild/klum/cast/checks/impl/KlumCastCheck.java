@@ -69,7 +69,14 @@ public abstract class KlumCastCheck<T extends Annotation> implements Check {
         }
     }
 
-    /** @deprecated Use {@link CheckContext} in a {@link Check} implementation. */
+    /**
+     * Executes this legacy adapter using the former check shape.
+     *
+     * @param annotationToCheck validated annotation use
+     * @param target target of the validated annotation use
+     * @return a legacy validation error when the check reports one
+     * @deprecated Use {@link CheckContext} in a {@link Check} implementation.
+     */
     @Deprecated
     public Optional<ErrorMessage> check(AnnotationNode annotationToCheck, AnnotatedNode target) {
         try {
@@ -82,7 +89,12 @@ public abstract class KlumCastCheck<T extends Annotation> implements Check {
         }
     }
 
-    /** @deprecated Legacy invocation setup; new checks receive {@link CheckContext}. */
+    /**
+     * Sets up the former annotation-stack invocation state.
+     *
+     * @param annotations legacy composition path ending in the validator binding
+     * @deprecated Legacy invocation setup; new checks receive {@link CheckContext}.
+     */
     @Deprecated
     public void setAnnotationStack(List<T> annotations) {
         annotationStack = annotations.subList(0, annotations.size() - 1);
@@ -90,15 +102,33 @@ public abstract class KlumCastCheck<T extends Annotation> implements Check {
         controlAnnotation = annotations.size() > 1 ? annotations.get(annotations.size() - 2) : null;
     }
 
-    /** @deprecated Legacy invocation setup; new checks receive {@link CheckContext}. */
+    /**
+     * Sets up the former validated-member invocation state.
+     *
+     * @param memberName validated annotation member, or {@code null} for annotation-level validation
+     * @deprecated Legacy invocation setup; new checks receive {@link CheckContext}.
+     */
     @Deprecated
     public void setMemberName(String memberName) { this.memberName = memberName; }
 
-    /** @deprecated Use an {@link com.blackbuild.klum.cast.spi.ApplicabilityFilter}. */
+    /**
+     * Decides whether this legacy check applies to a target.
+     *
+     * @param target validation target
+     * @return {@code true} when the legacy check should run
+     * @deprecated Use an {@link com.blackbuild.klum.cast.spi.ApplicabilityFilter}.
+     */
     @Deprecated
     protected boolean isValidFor(AnnotatedNode target) { return true; }
 
-    /** @deprecated Implement {@link Check#check(CheckContext)}. */
+    /**
+     * Performs the legacy validation operation.
+     *
+     * @param annotationToCheck validated annotation use
+     * @param target target of the validated annotation use
+     * @throws ValidationException when the legacy check reports a constraint violation
+     * @deprecated Implement {@link Check#check(CheckContext)}.
+     */
     @Deprecated
     protected abstract void doCheck(AnnotationNode annotationToCheck, AnnotatedNode target) throws ValidationException;
 

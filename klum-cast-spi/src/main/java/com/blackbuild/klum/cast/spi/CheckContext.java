@@ -31,7 +31,13 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 
-/** Immutable description of one check invocation. Groovy AST types are intentional public SPI. */
+/**
+ * Immutable description of one check invocation.
+ *
+ * <p>The validated annotation and target intentionally expose Groovy compiler AST types. Check authors therefore need
+ * the Groovy compiler API supplied by {@code klum-cast-spi}. The context contains the complete invocation state instead
+ * of relying on mutable fields in a check implementation.</p>
+ */
 public final class CheckContext {
 
     private final AnnotationNode validatedAnnotation;
@@ -51,10 +57,41 @@ public final class CheckContext {
         this.compositionPath = List.copyOf(compositionPath);
     }
 
+    /** @return the use of the validated annotation being checked */
     public AnnotationNode getValidatedAnnotation() { return validatedAnnotation; }
+
+    /** @return the Groovy AST node on which the validated annotation is used */
     public AnnotatedNode getTarget() { return target; }
+
+    /**
+     * @return the applicable control annotation, when the binding was reached through one
+     */
     public Optional<Annotation> getControlAnnotation() { return Optional.ofNullable(controlAnnotation); }
+
+    /**
+     * Returns the applicable control annotation when it has the requested type.
+     *
+     * <p>This is the type-safe counterpart to {@link #getControlAnnotation()} for checks that know their control
+     * annotation type. It does not make {@code CheckContext} generic because one context can describe a binding reached
+     * through differently composed validation annotations.</p>
+     *
+     * @param annotationType expected control annotation type
+     * @param <T> expected control annotation type
+     * @return the matching control annotation, or empty when no control annotation is present or it has another type
+     */
+    public <T extends Annotation> Optional<T> getControlAnnotation(Class<T> annotationType) {
+        Objects.requireNonNull(annotationType, "annotationType");
+        return annotationType.isInstance(controlAnnotation)
+                ? Optional.of(annotationType.cast(controlAnnotation))
+                : Optional.empty();
+    }
+
+    /** @return the validated annotation member being checked, or empty for annotation-level validation */
     public Optional<String> getMemberName() { return Optional.ofNullable(memberName); }
+
+    /** @return immutable identity of the binding that selected this check */
     public BindingMetadata getBinding() { return binding; }
+
+    /** @return immutable ordered annotations through which the binding was reached */
     public List<Annotation> getCompositionPath() { return compositionPath; }
 }
