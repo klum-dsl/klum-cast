@@ -35,7 +35,7 @@ import java.lang.annotation.Target;
  */
 @Target(ElementType.METHOD)
 @Retention(RetentionPolicy.RUNTIME)
-@KlumCastValidator("com.blackbuild.klum.cast.checks.impl.MemberTargetFilter")
+@KlumCastValidator("com.blackbuild.klum.cast.compiler.internal.checks.MemberTargetFilter")
 public @interface OnlyOn {
     /**
      * The element types on which the annotated member is allowed.

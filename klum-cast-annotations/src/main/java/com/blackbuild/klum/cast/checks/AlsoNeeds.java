@@ -24,16 +24,11 @@
 package com.blackbuild.klum.cast.checks;
 
 import com.blackbuild.klum.cast.KlumCastValidator;
-import com.blackbuild.klum.cast.checks.impl.KlumCastCheck;
-import org.codehaus.groovy.ast.AnnotatedNode;
-import org.codehaus.groovy.ast.AnnotationNode;
 
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
-import java.util.Arrays;
-import java.util.Set;
 
 /**
  * The {@code AlsoNeeds} annotation is used to specify that a certain annotation member should be used together with
@@ -41,27 +36,11 @@ import java.util.Set;
  */
 @Target(ElementType.METHOD)
 @Retention(RetentionPolicy.RUNTIME)
-@KlumCastValidator(type = AlsoNeeds.Check.class)
+@KlumCastValidator("com.blackbuild.klum.cast.compiler.internal.checks.AlsoNeedsCheck")
 public @interface AlsoNeeds {
     /**
      * The names of the annotation members that need to be used together with the annotated member.
      * @return the names of the annotation members that need to be used together with the annotated member.
      */
     String[] value();
-
-    class Check extends KlumCastCheck<AlsoNeeds> {
-
-        @Override
-        protected void doCheck(AnnotationNode annotationToCheck, AnnotatedNode target) {
-            String[] requiredCoMembers = controlAnnotation.value();
-            Set<String> existingMembers = annotationToCheck.getMembers().keySet();
-
-            if (Arrays.stream(requiredCoMembers).noneMatch(existingMembers::contains))
-                throw new IllegalStateException(String.format(
-                        "Annotation member %s.%s needs to be used together with one of %s",
-                        annotationToCheck.getClassNode().getName(),
-                        memberName,
-                        Arrays.toString(requiredCoMembers)));
-        }
-    }
 }

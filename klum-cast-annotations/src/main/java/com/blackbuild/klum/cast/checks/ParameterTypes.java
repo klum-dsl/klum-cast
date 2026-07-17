@@ -23,7 +23,6 @@
  */
 package com.blackbuild.klum.cast.checks;
 
-import com.blackbuild.klum.cast.Filter;
 import com.blackbuild.klum.cast.KlumCastValidator;
 
 import java.lang.annotation.ElementType;
@@ -38,7 +37,7 @@ import java.lang.annotation.Target;
  */
 @Target(ElementType.ANNOTATION_TYPE)
 @Retention(RetentionPolicy.RUNTIME)
-@KlumCastValidator(value = "com.blackbuild.klum.cast.checks.impl.ParameterTypesCheck", validFor = Filter.Methods.class)
+@KlumCastValidator(value = "com.blackbuild.klum.cast.compiler.internal.checks.ParameterTypesCheck", validForTargets = ElementType.METHOD)
 public @interface ParameterTypes {
     Class<?>[] value();
     boolean strict() default false;

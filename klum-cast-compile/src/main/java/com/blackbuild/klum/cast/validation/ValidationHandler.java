@@ -25,10 +25,14 @@ package com.blackbuild.klum.cast.validation;
 
 import com.blackbuild.klum.cast.KlumCastValidated;
 import com.blackbuild.klum.cast.KlumCastValidator;
+import com.blackbuild.klum.cast.spi.BindingMetadata;
+import com.blackbuild.klum.cast.spi.Check;
+import com.blackbuild.klum.cast.spi.CheckBinding;
+import com.blackbuild.klum.cast.spi.CheckContext;
+import com.blackbuild.klum.cast.spi.Diagnostic;
 import com.blackbuild.klum.cast.checks.impl.KlumCastCheck;
 import org.codehaus.groovy.ast.AnnotatedNode;
 import org.codehaus.groovy.ast.AnnotationNode;
-import org.codehaus.groovy.runtime.InvokerHelper;
 
 import java.lang.annotation.Annotation;
 import java.lang.reflect.AnnotatedElement;
@@ -38,17 +42,16 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
+/** Internal compiler orchestration for the public check SPI. */
 public class ValidationHandler {
 
     private final AnnotationNode annotationToValidate;
     private final AnnotatedNode target;
-    private final List<KlumCastCheck.ErrorMessage> errors = new ArrayList<>();
+    private final List<Diagnostic> diagnostics = new ArrayList<>();
+    private final List<Annotation> compositionPath = new ArrayList<>();
     private String currentMember;
 
-    private final List<Annotation> annotationStack = new ArrayList<>();
-
     public enum Status { VALIDATED }
-
     public static final String METADATA_KEY = ValidationHandler.class.getName();
 
     ValidationHandler(AnnotationNode annotationToValidate, AnnotatedNode target) {
@@ -60,86 +63,107 @@ public class ValidationHandler {
         return annotationNode.getNodeMetaData(METADATA_KEY) != null;
     }
 
-    public static void setStatus(AnnotationNode annotationNode, ValidationHandler.Status status) {
+    public static void setStatus(AnnotationNode annotationNode, Status status) {
         annotationNode.setNodeMetaData(METADATA_KEY, status);
     }
 
-    public static List<KlumCastCheck.ErrorMessage> validateAnnotation(AnnotationNode annotationToValidate, AnnotatedNode target) {
-        if (alreadyValidated(annotationToValidate))
-            return Collections.emptyList();
-        if (!annotationToValidate.getClassNode().isResolved())
-            return Collections.singletonList(new KlumCastCheck.ErrorMessage("Validated annotation must have already been compiled", annotationToValidate));
-
+    public static List<Diagnostic> validateAnnotation(AnnotationNode annotationToValidate, AnnotatedNode target) {
+        if (alreadyValidated(annotationToValidate)) return Collections.emptyList();
+        if (!annotationToValidate.getClassNode().isResolved()) {
+            return Collections.singletonList(new Diagnostic("klum-cast.unresolved-annotation",
+                    "Validated annotation must have already been compiled", annotationToValidate));
+        }
         return new ValidationHandler(annotationToValidate, target).validate();
     }
 
-    private List<KlumCastCheck.ErrorMessage> validate() {
-        doValidate(annotationToValidate.getClassNode().getTypeClass());
-        validateAnnotationMembers();
-        setStatus(annotationToValidate, Status.VALIDATED);
-        return errors;
-    }
-
-    private void validateAnnotationMembers() {
+    private List<Diagnostic> validate() {
+        validate(annotationToValidate.getClassNode().getTypeClass());
         Arrays.stream(annotationToValidate.getClassNode().getTypeClass().getDeclaredMethods())
-                .filter(m -> annotationToValidate.getMember(m.getName()) != null)
-                .forEach(this::validateAnnotationMember);
+                .filter(method -> annotationToValidate.getMember(method.getName()) != null)
+                .forEach(this::validateMember);
+        setStatus(annotationToValidate, Status.VALIDATED);
+        return diagnostics;
     }
 
-    private void validateAnnotationMember(Method method) {
+    private void validateMember(Method method) {
         currentMember = method.getName();
-        try {
-            doValidate(method);
-        } finally {
-            currentMember = null;
-        }
+        try { validate(method); } finally { currentMember = null; }
     }
 
-    private void doValidate(AnnotatedElement annotationOrMethod) {
-        RepeatableAnnotationsSupport.getAllAnnotations(annotationOrMethod)
-                .forEach(this::handleSingleAnnotation);
+    private void validate(AnnotatedElement element) {
+        RepeatableAnnotationsSupport.getAllAnnotations(element).forEach(this::handleSingleAnnotation);
     }
 
     void handleSingleAnnotation(Annotation annotation) {
-        if (!FilterHandler.isValidFor(annotation, target))
-            return;
+        if (!FilterHandler.isValidFor(annotation, target, currentMember, compositionPath)) return;
+        compositionPath.add(annotation);
         try {
-            annotationStack.add(annotation);
             if (annotation instanceof KlumCastValidator) {
-                executeValidator((KlumCastValidator) annotation);
+                executeLegacyBinding((KlumCastValidator) annotation);
+            } else if (annotation instanceof CheckBinding) {
+                executeTypedBinding((CheckBinding) annotation);
             } else if (isValidated(annotation)) {
-                doValidate(annotation.annotationType());
+                validate(annotation.annotationType());
             }
         } finally {
-            annotationStack.remove(annotationStack.size() - 1);
+            compositionPath.remove(compositionPath.size() - 1);
         }
     }
 
     private static boolean isValidated(Annotation annotation) {
-        return annotation.annotationType().isAnnotationPresent(KlumCastValidated.class) || annotation.annotationType().isAnnotationPresent(KlumCastValidator.class);
+        return annotation.annotationType().isAnnotationPresent(KlumCastValidated.class)
+                || annotation.annotationType().isAnnotationPresent(KlumCastValidator.class)
+                || annotation.annotationType().isAnnotationPresent(CheckBinding.class);
     }
 
-    private void executeValidator(KlumCastValidator validator) {
-        if (validator.value().isEmpty() && validator.type().equals(KlumCastValidator.None.class))
-            throw new IllegalStateException("@KlumCastValidator must specify a validator class using value or type.");
-        if (!validator.value().isEmpty() && !validator.type().equals(KlumCastValidator.None.class))
-            throw new IllegalStateException("@KlumCastValidator specifies both a validator class and a validator name.");
+    private void executeLegacyBinding(KlumCastValidator binding) {
+        boolean hasName = !binding.value().isEmpty();
+        boolean hasType = !binding.type().equals(KlumCastValidator.None.class);
+        if (hasName == hasType) throw new IllegalStateException("@KlumCastValidator must select exactly one check binding.");
+        Class<?> candidate = hasType ? binding.type() : load(binding.value());
+        execute(binding, candidate, hasName ? binding.value() : candidate.getName(), new Class[0]);
+    }
+
+    private void executeTypedBinding(CheckBinding binding) {
+        execute(binding, binding.value(), binding.value().getName(), binding.filters());
+    }
+
+    private void execute(Annotation declaration, Class<?> candidate, String implementationName,
+                         Class<?>[] filterTypes) {
+        if (!Check.class.isAssignableFrom(candidate)) {
+            throw new IllegalStateException("Configured check " + implementationName + " does not implement " + Check.class.getName());
+        }
+        Class<? extends Check> checkType = candidate.asSubclass(Check.class);
+        BindingMetadata metadata = new BindingMetadata(declaration, checkType, implementationName);
+        Annotation control = findControlAnnotation();
+        CheckContext context = new CheckContext(annotationToValidate, target, control, currentMember, metadata, compositionPath);
+        if (!FilterHandler.areApplicable(filterTypes, context)) return;
         try {
-            Class<?> type = validator.type();
-            if (type.equals(KlumCastValidator.None.class))
-                type = Class.forName(validator.value(), true, AstSupport.getTargetClassLoader(target));
-            if (!KlumCastCheck.class.isAssignableFrom(type))
-                throw new IllegalStateException("Class " + validator.value() + " is not a KlumCastCheck.");
-            KlumCastCheck<Annotation> check = (KlumCastCheck<Annotation>) InvokerHelper.invokeNoArgumentsConstructorOf(type);
-            check.setAnnotationStack(Collections.unmodifiableList(annotationStack));
-            check.setMemberName(currentMember);
-            check.check(annotationToValidate, target).ifPresent(errors::add);
-        } catch (ClassNotFoundException e) {
-            throw new IllegalStateException("Could not create instance of KlumCastCheck " + validator.value(), e);
+            diagnostics.addAll(checkType.getDeclaredConstructor().newInstance().check(context));
+        } catch (ReflectiveOperationException exception) {
+            throw new IllegalStateException("Could not instantiate check " + implementationName + " with an accessible no-argument constructor", exception);
         }
     }
 
+    private Class<?> load(String name) {
+        try { return Class.forName(name, true, AstSupport.getTargetClassLoader(target)); }
+        catch (ClassNotFoundException exception) { throw new IllegalStateException("Could not load check " + name, exception); }
+    }
+
+    private Annotation findControlAnnotation() {
+        for (int index = compositionPath.size() - 1; index >= 0; index--) {
+            Annotation candidate = compositionPath.get(index);
+            if (!(candidate instanceof KlumCastValidator) && !(candidate instanceof CheckBinding)) return candidate;
+        }
+        return null;
+    }
+
+    @Deprecated
     List<KlumCastCheck.ErrorMessage> getErrors() {
+        List<KlumCastCheck.ErrorMessage> errors = new ArrayList<>();
+        for (Diagnostic diagnostic : diagnostics) {
+            errors.add(new KlumCastCheck.ErrorMessage(diagnostic.getMessage(), diagnostic.getPrimaryNode()));
+        }
         return errors;
     }
 }

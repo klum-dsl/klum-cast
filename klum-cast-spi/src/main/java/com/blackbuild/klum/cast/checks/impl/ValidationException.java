@@ -25,35 +25,14 @@ package com.blackbuild.klum.cast.checks.impl;
 
 import org.codehaus.groovy.ast.ASTNode;
 
-/**
- * Exception that can be thrown to signal a validation error. Currently the only difference to a normal exception is
- * the option to provide an ASTNode that is used as the position of the error (which defaults to the validated annotation).
- */
+/** @deprecated since 0.4.0. Return a diagnostic from {@code Check} instead. */
+@Deprecated
 public class ValidationException extends Exception {
-
     private final ASTNode position;
-    public ValidationException(String message) {
-        this(message, null, null);
-    }
-
-    public ValidationException(String message, ASTNode position) {
-        this(message, null, position);
-    }
-
-    public ValidationException(String message, Throwable cause) {
-        this(message, cause, null);
-    }
-
-    public ValidationException(String message, Throwable cause, ASTNode position) {
-        super(message, cause);
-        this.position = position;
-    }
-
-    public ValidationException(Throwable cause) {
-        this(cause.getMessage(), cause, null);
-    }
-
-    public KlumCastCheck.ErrorMessage toError(ASTNode position) {
-        return new KlumCastCheck.ErrorMessage(getMessage(), this.position != null ? this.position : position);
-    }
+    public ValidationException(String message) { this(message, null, null); }
+    public ValidationException(String message, ASTNode position) { this(message, null, position); }
+    public ValidationException(String message, Throwable cause) { this(message, cause, null); }
+    public ValidationException(String message, Throwable cause, ASTNode position) { super(message, cause); this.position = position; }
+    public ValidationException(Throwable cause) { this(cause.getMessage(), cause, null); }
+    public KlumCastCheck.ErrorMessage toError(ASTNode fallback) { return new KlumCastCheck.ErrorMessage(getMessage(), position != null ? position : fallback); }
 }

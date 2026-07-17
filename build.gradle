@@ -23,6 +23,7 @@ plugins {
 }
 ext {
     groovyVersion = project.findProperty("groovyVersion") ?: '2.4.21'
+    groovyGroup = groovyVersion.startsWith("4.") ? 'org.apache.groovy' : 'org.codehaus.groovy'
     // groovyVersion = '4.0.12'
 }
 
@@ -56,6 +57,11 @@ subprojects {
     sourceCompatibility = JavaVersion.VERSION_11
     targetCompatibility = JavaVersion.VERSION_11
 
+    tasks.withType(Jar).configureEach {
+        def moduleRole = project.name == 'klum-cast-compile' ? 'compiler' : project.name - 'klum-cast-'
+        manifest.attributes('Automatic-Module-Name': "com.blackbuild.klum.cast.${moduleRole}")
+    }
+
     repositories {
         mavenCentral()
     }
@@ -66,7 +72,7 @@ subprojects {
 
     dependencies {
         compileOnly "org.jetbrains:annotations:16.0.2"
-        compileOnly "org.codehaus.groovy:groovy-all:2.4.21"
+        compileOnly "$rootProject.ext.groovyGroup:groovy-all:$rootProject.ext.groovyVersion"
 
         //compileOnly "com.intellij:openapi:7.0.3"
 

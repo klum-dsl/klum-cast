@@ -36,7 +36,7 @@ import java.lang.annotation.Target;
  */
 @Target({ElementType.ANNOTATION_TYPE})
 @Retention(RetentionPolicy.RUNTIME)
-@KlumCastValidator(value = "com.blackbuild.klum.cast.checks.impl.ModifiersCheck")
+@KlumCastValidator(value = "com.blackbuild.klum.cast.compiler.internal.checks.ModifiersCheck")
 public @interface NeedsModifiers {
     /**
      * The modifiers that are required - should be a combination of {@link java.lang.reflect.Modifier} constants.
