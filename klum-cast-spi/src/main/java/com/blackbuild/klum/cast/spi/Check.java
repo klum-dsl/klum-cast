@@ -41,4 +41,17 @@ public interface Check {
      * @return zero or more expected constraint diagnostics
      */
     List<Diagnostic> check(CheckContext context);
+
+    /**
+     * Declares the stable codes and named arguments this check supports for message overrides.
+     *
+     * <p>Checks that support {@code @DiagnosticMessages} must declare every overridable code here. The compiler uses
+     * this declaration to reject misspelled codes and invalid named placeholders before it emits a constraint
+     * diagnostic.</p>
+     *
+     * @return immutable declarations for this check's overridable diagnostics
+     */
+    default List<DiagnosticDefinition> getDiagnosticDefinitions() {
+        return List.of(DiagnosticDefinition.of(getClass().getName()));
+    }
 }
