@@ -29,6 +29,7 @@ import com.blackbuild.klum.cast.spi.CheckBinding
 import com.blackbuild.klum.cast.spi.CheckContext
 import com.blackbuild.klum.cast.spi.Diagnostic
 import com.blackbuild.klum.cast.checks.impl.KlumCastCheck
+import org.codehaus.groovy.ast.AnnotatedNode
 import org.codehaus.groovy.ast.AnnotationNode
 import org.codehaus.groovy.ast.ClassHelper
 
@@ -291,7 +292,7 @@ class LegacyAdapterCheck extends KlumCastCheck<LegacyControl> {
     List<List<Object>> invocations = []
 
     @Override
-    protected void doCheck(AnnotationNode annotationToCheck, org.codehaus.groovy.ast.AnnotatedNode target) {
+    protected void doCheck(AnnotationNode annotationToCheck, AnnotatedNode target) {
         invocations << [
                 controlAnnotation.annotationType().simpleName,
                 memberName,
