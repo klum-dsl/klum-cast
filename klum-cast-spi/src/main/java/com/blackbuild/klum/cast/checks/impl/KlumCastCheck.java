@@ -27,6 +27,7 @@ import com.blackbuild.klum.cast.spi.BindingMetadata;
 import com.blackbuild.klum.cast.spi.Check;
 import com.blackbuild.klum.cast.spi.CheckContext;
 import com.blackbuild.klum.cast.spi.Diagnostic;
+import com.blackbuild.klum.cast.spi.DiagnosticDefinition;
 import org.codehaus.groovy.ast.ASTNode;
 import org.codehaus.groovy.ast.AnnotatedNode;
 import org.codehaus.groovy.ast.AnnotationNode;
@@ -67,6 +68,11 @@ public abstract class KlumCastCheck<T extends Annotation> implements Check {
             klumCastValidator = null;
             annotationStack = null;
         }
+    }
+
+    @Override
+    public List<DiagnosticDefinition> getDiagnosticDefinitions() {
+        return Collections.singletonList(DiagnosticDefinition.of(getClass().getName()));
     }
 
     /**

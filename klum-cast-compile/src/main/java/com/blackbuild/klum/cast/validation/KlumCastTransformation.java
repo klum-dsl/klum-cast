@@ -25,6 +25,8 @@ package com.blackbuild.klum.cast.validation;
 
 import com.blackbuild.klum.cast.KlumCastValidated;
 import com.blackbuild.klum.cast.KlumCastValidator;
+import com.blackbuild.klum.cast.spi.CheckBinding;
+import com.blackbuild.klum.cast.spi.Diagnostic;
 import org.codehaus.groovy.ast.*;
 import org.codehaus.groovy.control.CompilePhase;
 import org.codehaus.groovy.control.SourceUnit;
@@ -32,6 +34,11 @@ import org.codehaus.groovy.transform.AbstractASTTransformation;
 import org.codehaus.groovy.transform.GroovyASTTransformation;
 
 import static org.codehaus.groovy.ast.ClassHelper.make;
+
+import java.lang.annotation.Annotation;
+import java.util.HashSet;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  * Transformation the performs the actual validation.
@@ -42,6 +49,7 @@ public class KlumCastTransformation extends AbstractASTTransformation implements
 
     static final ClassNode KLUM_CAST_VALIDATED = make(KlumCastValidated.class);
     static final ClassNode KLUM_CAST_VALIDATOR = make(KlumCastValidator.class);
+    static final ClassNode CHECK_BINDING = make(CheckBinding.class);
 
     @Override
     public void visit(ASTNode[] nodes, SourceUnit source) {
@@ -64,7 +72,7 @@ public class KlumCastTransformation extends AbstractASTTransformation implements
 
     @Override
     public void visitClass(ClassNode node) {
-        if (node.isAnnotationDefinition() && !node.getAnnotations(KLUM_CAST_VALIDATED).isEmpty())
+        if (node.isAnnotationDefinition() && hasValidationBinding(node, new HashSet<>()))
             return;
         visitAnnotations(node);
         node.visitContents(this);
@@ -79,14 +87,43 @@ public class KlumCastTransformation extends AbstractASTTransformation implements
         for (AnnotationNode annotation : node.getAnnotations())
             if (isKlumCastAnnotation(annotation))
                 ValidationHandler.validateAnnotation(annotation, node)
-                        .forEach(diagnostic -> addError("[" + diagnostic.getCode() + "] " + diagnostic.getMessage(), diagnostic.getPrimaryNode()));
+                        .forEach(diagnostic -> addError(renderDiagnostic(diagnostic), diagnostic.getPrimaryNode()));
+    }
+
+    private static String renderDiagnostic(Diagnostic diagnostic) {
+        StringBuilder rendered = new StringBuilder("[").append(diagnostic.getCode()).append("] ")
+                .append(diagnostic.getMessage());
+        diagnostic.getBinding().ifPresent(binding -> rendered.append("\nValidation binding: ")
+                .append(binding.getImplementationName()));
+        if (!diagnostic.getCompositionPath().isEmpty()) {
+            rendered.append("\nValidation path: ").append(diagnostic.getCompositionPath().stream()
+                    .map(Annotation::annotationType)
+                    .map(Class::getName)
+                    .collect(Collectors.joining(" -> ")));
+        }
+        if (!diagnostic.getRelatedNodes().isEmpty()) {
+            rendered.append("\nRelated locations: ").append(diagnostic.getRelatedNodes().stream()
+                    .map(node -> node.getLineNumber() + ":" + node.getColumnNumber())
+                    .collect(Collectors.joining(", ")));
+        }
+        return rendered.toString();
     }
 
     private boolean isKlumCastAnnotation(AnnotationNode annotation) {
         if (annotation.isBuiltIn()) return false;
-        return annotation.getClassNode().getAnnotations().stream()
-                .map(AnnotationNode::getClassNode)
-                .anyMatch(a -> a.equals(KLUM_CAST_VALIDATED) || a.equals(KLUM_CAST_VALIDATOR));
+        return hasValidationBinding(annotation.getClassNode(), new HashSet<>());
+    }
+
+    private boolean hasValidationBinding(ClassNode annotationType, Set<String> visited) {
+        if (!visited.add(annotationType.getName())) return false;
+        for (AnnotationNode declaration : annotationType.getAnnotations()) {
+            ClassNode type = declaration.getClassNode();
+            if (type.equals(KLUM_CAST_VALIDATED) || type.equals(KLUM_CAST_VALIDATOR) || type.equals(CHECK_BINDING)) {
+                return true;
+            }
+            if (hasValidationBinding(type, visited)) return true;
+        }
+        return false;
     }
 
     @Override

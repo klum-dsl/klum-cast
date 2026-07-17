@@ -25,11 +25,14 @@ package com.blackbuild.klum.cast.validation;
 
 import com.blackbuild.klum.cast.KlumCastValidated;
 import com.blackbuild.klum.cast.KlumCastValidator;
+import com.blackbuild.klum.cast.DiagnosticMessage;
+import com.blackbuild.klum.cast.DiagnosticMessages;
 import com.blackbuild.klum.cast.spi.BindingMetadata;
 import com.blackbuild.klum.cast.spi.Check;
 import com.blackbuild.klum.cast.spi.CheckBinding;
 import com.blackbuild.klum.cast.spi.CheckContext;
 import com.blackbuild.klum.cast.spi.Diagnostic;
+import com.blackbuild.klum.cast.spi.DiagnosticDefinition;
 import com.blackbuild.klum.cast.checks.impl.KlumCastCheck;
 import org.codehaus.groovy.ast.AnnotatedNode;
 import org.codehaus.groovy.ast.AnnotationNode;
@@ -40,7 +43,12 @@ import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
+import java.util.LinkedHashMap;
+import java.util.Map;
+import java.util.Set;
+import java.util.HashSet;
 
 /** Internal compiler orchestration for the public check SPI. */
 public class ValidationHandler {
@@ -80,6 +88,7 @@ public class ValidationHandler {
         validate(annotationToValidate.getClassNode().getTypeClass());
         Arrays.stream(annotationToValidate.getClassNode().getTypeClass().getDeclaredMethods())
                 .filter(method -> annotationToValidate.getMember(method.getName()) != null)
+                .sorted(Comparator.comparing(Method::getName))
                 .forEach(this::validateMember);
         setStatus(annotationToValidate, Status.VALIDATED);
         return diagnostics;
@@ -111,9 +120,19 @@ public class ValidationHandler {
     }
 
     private static boolean isValidated(Annotation annotation) {
-        return annotation.annotationType().isAnnotationPresent(KlumCastValidated.class)
-                || annotation.annotationType().isAnnotationPresent(KlumCastValidator.class)
-                || annotation.annotationType().isAnnotationPresent(CheckBinding.class);
+        return hasValidationBinding(annotation.annotationType(), new HashSet<>());
+    }
+
+    private static boolean hasValidationBinding(Class<? extends Annotation> annotationType,
+                                                Set<Class<? extends Annotation>> visited) {
+        if (!visited.add(annotationType)) return false;
+        if (annotationType.isAnnotationPresent(KlumCastValidated.class)
+                || annotationType.isAnnotationPresent(KlumCastValidator.class)
+                || annotationType.isAnnotationPresent(CheckBinding.class)) return true;
+        for (Annotation annotation : annotationType.getDeclaredAnnotations()) {
+            if (hasValidationBinding(annotation.annotationType(), visited)) return true;
+        }
+        return false;
     }
 
     private void executeLegacyBinding(KlumCastValidator binding) {
@@ -139,10 +158,87 @@ public class ValidationHandler {
         CheckContext context = new CheckContext(annotationToValidate, target, control, currentMember, metadata, compositionPath);
         if (!FilterHandler.areApplicable(filterTypes, context)) return;
         try {
-            diagnostics.addAll(checkType.getDeclaredConstructor().newInstance().check(context));
+            Check check = checkType.getDeclaredConstructor().newInstance();
+            Map<String, DiagnosticDefinition> definitions = diagnosticDefinitions(check, metadata);
+            validateTemplates(context, definitions, metadata);
+            List<Diagnostic> emitted = check.check(context);
+            if (emitted == null) throw technicalFailure(metadata, "returned null diagnostics", null);
+            for (Diagnostic diagnostic : emitted) {
+                DiagnosticDefinition definition = definitions.get(diagnostic.getCode());
+                if (definition == null) {
+                    throw technicalFailure(metadata, "returned undeclared diagnostic code " + diagnostic.getCode(), null);
+                }
+                if (!definition.getArgumentNames().containsAll(diagnostic.getArguments().keySet())) {
+                    throw technicalFailure(metadata, "returned undeclared diagnostic arguments for " + diagnostic.getCode(), null);
+                }
+                diagnostics.add(render(diagnostic.withProvenance(metadata, compositionPath)));
+            }
         } catch (ReflectiveOperationException exception) {
-            throw new IllegalStateException("Could not instantiate check " + implementationName + " with an accessible no-argument constructor", exception);
+            throw technicalFailure(metadata, "could not instantiate it with an accessible no-argument constructor", exception);
+        } catch (RuntimeException exception) {
+            if (exception.getMessage() != null && exception.getMessage().startsWith("Technical failure for check ")) throw exception;
+            throw technicalFailure(metadata, "threw while executing", exception);
         }
+    }
+
+    private static Map<String, DiagnosticDefinition> diagnosticDefinitions(Check check, BindingMetadata binding) {
+        Map<String, DiagnosticDefinition> definitions = new LinkedHashMap<>();
+        for (DiagnosticDefinition definition : check.getDiagnosticDefinitions()) {
+            if (definitions.put(definition.getCode(), definition) != null) {
+                throw technicalFailure(binding, "declared diagnostic code " + definition.getCode() + " more than once", null);
+            }
+        }
+        return definitions;
+    }
+
+    private static void validateTemplates(CheckContext context, Map<String, DiagnosticDefinition> definitions,
+                                          BindingMetadata binding) {
+        for (Annotation annotation : context.getCompositionPath()) {
+            DiagnosticMessages messages = annotation.annotationType().getAnnotation(DiagnosticMessages.class);
+            if (messages == null) continue;
+            Set<String> codes = new java.util.HashSet<>();
+            for (DiagnosticMessage message : messages.value()) {
+                if (!codes.add(message.code())) {
+                    throw technicalFailure(binding, "declares diagnostic message code " + message.code() + " more than once", null);
+                }
+                DiagnosticDefinition definition = definitions.get(message.code());
+                if (definition == null) {
+                    throw technicalFailure(binding, "does not declare diagnostic message code " + message.code(), null);
+                }
+                try {
+                    DiagnosticTemplates.validate(message.template(), definition.getArgumentNames());
+                } catch (IllegalArgumentException exception) {
+                    throw technicalFailure(binding, "has an invalid template for " + message.code(), exception);
+                }
+            }
+        }
+    }
+
+    private static Diagnostic render(Diagnostic diagnostic) {
+        DiagnosticMessage override = findNearestOverride(diagnostic);
+        if (override == null) return diagnostic;
+        try {
+            return diagnostic.withMessage(DiagnosticTemplates.render(override.template(), diagnostic.getArguments()));
+        } catch (IllegalArgumentException exception) {
+            throw technicalFailure(diagnostic.getBinding().orElseThrow(), "could not render template for " + diagnostic.getCode(), exception);
+        }
+    }
+
+    private static DiagnosticMessage findNearestOverride(Diagnostic diagnostic) {
+        List<Annotation> path = diagnostic.getCompositionPath();
+        for (int index = path.size() - 1; index >= 0; index--) {
+            DiagnosticMessages messages = path.get(index).annotationType().getAnnotation(DiagnosticMessages.class);
+            if (messages == null) continue;
+            for (DiagnosticMessage message : messages.value()) {
+                if (message.code().equals(diagnostic.getCode())) return message;
+            }
+        }
+        return null;
+    }
+
+    private static IllegalStateException technicalFailure(BindingMetadata binding, String detail, Throwable cause) {
+        return new IllegalStateException("Technical failure for check " + binding.getImplementationName() + " bound by @"
+                + binding.getDeclaration().annotationType().getName() + ": " + detail, cause);
     }
 
     private Class<?> load(String name) {
