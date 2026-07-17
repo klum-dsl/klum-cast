@@ -23,20 +23,21 @@
  */
 package com.blackbuild.klum.cast.compiler.internal.checks;
 
-import com.blackbuild.klum.cast.checks.impl.KlumCastCheck;
+import com.blackbuild.klum.cast.checks.ClassNeedsAnnotation;
+import com.blackbuild.klum.cast.spi.Check;
+import com.blackbuild.klum.cast.spi.CheckContext;
+import com.blackbuild.klum.cast.spi.Diagnostic;
+import org.codehaus.groovy.ast.ClassHelper;
+import org.codehaus.groovy.ast.ClassNode;
 
-import com.blackbuild.klum.cast.checks.NeedsReturnType;
-import com.blackbuild.klum.cast.validation.AstSupport;
-import org.codehaus.groovy.ast.*;
+import java.util.List;
 
-import java.util.Arrays;
-
-public class NeedsReturnTypeCheck extends KlumCastCheck<NeedsReturnType> {
-    @Override
-    protected void doCheck(AnnotationNode annotationToCheck, AnnotatedNode target) {
-        ClassNode actualReturnType = ((MethodNode) target).getReturnType();
-
-        if (Arrays.stream(controlAnnotation.value()).map(ClassHelper::make).noneMatch(r -> AstSupport.isAssignable(actualReturnType, r)))
-            throw new IllegalStateException("Method " + ((MethodNode) target).getName() + " must return one of " + Arrays.toString(controlAnnotation.value()) + ".");
+public final class ClassNeedsAnnotationCheck implements Check {
+    @Override public List<Diagnostic> check(CheckContext context) {
+        ClassNeedsAnnotation control = (ClassNeedsAnnotation) context.getControlAnnotation().orElseThrow(() -> new IllegalStateException("ClassNeedsAnnotation requires a control annotation"));
+        ClassNode target = context.getTarget() instanceof ClassNode ? (ClassNode) context.getTarget() : context.getTarget().getDeclaringClass();
+        if (target.getAnnotations(ClassHelper.make(control.value())).isEmpty()) return Checks.failure(getClass(), context,
+                String.format(control.message(), context.getValidatedAnnotation().getClassNode().getNameWithoutPackage(), control.value().getSimpleName()));
+        return List.of();
     }
 }

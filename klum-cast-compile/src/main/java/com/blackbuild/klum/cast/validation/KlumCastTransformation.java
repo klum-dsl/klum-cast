@@ -78,7 +78,8 @@ public class KlumCastTransformation extends AbstractASTTransformation implements
     protected void visitAnnotations(AnnotatedNode node) {
         for (AnnotationNode annotation : node.getAnnotations())
             if (isKlumCastAnnotation(annotation))
-                ValidationHandler.validateAnnotation(annotation, node).forEach(e -> addError(e.message, e.node));
+                ValidationHandler.validateAnnotation(annotation, node)
+                        .forEach(diagnostic -> addError("[" + diagnostic.getCode() + "] " + diagnostic.getMessage(), diagnostic.getPrimaryNode()));
     }
 
     private boolean isKlumCastAnnotation(AnnotationNode annotation) {

@@ -23,20 +23,20 @@
  */
 package com.blackbuild.klum.cast.compiler.internal.checks;
 
-import com.blackbuild.klum.cast.checks.impl.KlumCastCheck;
-
-import com.blackbuild.klum.cast.checks.NeedsReturnType;
-import com.blackbuild.klum.cast.validation.AstSupport;
-import org.codehaus.groovy.ast.*;
+import com.blackbuild.klum.cast.checks.AlsoNeeds;
+import com.blackbuild.klum.cast.spi.Check;
+import com.blackbuild.klum.cast.spi.CheckContext;
+import com.blackbuild.klum.cast.spi.Diagnostic;
 
 import java.util.Arrays;
+import java.util.List;
 
-public class NeedsReturnTypeCheck extends KlumCastCheck<NeedsReturnType> {
-    @Override
-    protected void doCheck(AnnotationNode annotationToCheck, AnnotatedNode target) {
-        ClassNode actualReturnType = ((MethodNode) target).getReturnType();
-
-        if (Arrays.stream(controlAnnotation.value()).map(ClassHelper::make).noneMatch(r -> AstSupport.isAssignable(actualReturnType, r)))
-            throw new IllegalStateException("Method " + ((MethodNode) target).getName() + " must return one of " + Arrays.toString(controlAnnotation.value()) + ".");
+public final class AlsoNeedsCheck implements Check {
+    @Override public List<Diagnostic> check(CheckContext context) {
+        AlsoNeeds control = (AlsoNeeds) context.getControlAnnotation().orElseThrow(() -> new IllegalStateException("AlsoNeeds requires a control annotation"));
+        if (Arrays.stream(control.value()).noneMatch(context.getValidatedAnnotation().getMembers()::containsKey)) {
+            return Checks.failure(getClass(), context, "Annotation member " + context.getValidatedAnnotation().getClassNode().getName() + "." + context.getMemberName().orElse("") + " needs to be used together with one of " + Arrays.toString(control.value()));
+        }
+        return List.of();
     }
 }

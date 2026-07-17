@@ -21,7 +21,9 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.blackbuild.klum.cast.checks.impl;
+package com.blackbuild.klum.cast.compiler.internal.checks;
+
+import com.blackbuild.klum.cast.checks.impl.KlumCastCheck;
 
 import com.blackbuild.klum.cast.checks.NeedsOneOf;
 import org.codehaus.groovy.ast.AnnotatedNode;

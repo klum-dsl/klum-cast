@@ -23,20 +23,17 @@
  */
 package com.blackbuild.klum.cast.compiler.internal.checks;
 
-import com.blackbuild.klum.cast.checks.impl.KlumCastCheck;
+import com.blackbuild.klum.cast.spi.Check;
+import com.blackbuild.klum.cast.spi.CheckContext;
+import com.blackbuild.klum.cast.spi.Diagnostic;
+import org.codehaus.groovy.ast.MethodNode;
 
-import com.blackbuild.klum.cast.checks.NeedsReturnType;
-import com.blackbuild.klum.cast.validation.AstSupport;
-import org.codehaus.groovy.ast.*;
+import java.util.List;
 
-import java.util.Arrays;
-
-public class NeedsReturnTypeCheck extends KlumCastCheck<NeedsReturnType> {
-    @Override
-    protected void doCheck(AnnotationNode annotationToCheck, AnnotatedNode target) {
-        ClassNode actualReturnType = ((MethodNode) target).getReturnType();
-
-        if (Arrays.stream(controlAnnotation.value()).map(ClassHelper::make).noneMatch(r -> AstSupport.isAssignable(actualReturnType, r)))
-            throw new IllegalStateException("Method " + ((MethodNode) target).getName() + " must return one of " + Arrays.toString(controlAnnotation.value()) + ".");
+public final class MustBeStaticCheck implements Check {
+    @Override public List<Diagnostic> check(CheckContext context) {
+        if (!((MethodNode) context.getTarget()).isStatic()) return Checks.failure(getClass(), context,
+                "Annotation " + context.getValidatedAnnotation().getClassNode().getName() + " must be placed on a static method.");
+        return List.of();
     }
 }

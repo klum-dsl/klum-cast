@@ -24,85 +24,63 @@
 package com.blackbuild.klum.cast.validation;
 
 import com.blackbuild.klum.cast.Filter;
-import com.blackbuild.klum.cast.checks.impl.AnnotationHelper;
+import com.blackbuild.klum.cast.KlumCastValidator;
+import com.blackbuild.klum.cast.spi.ApplicabilityFilter;
+import com.blackbuild.klum.cast.spi.BindingMetadata;
+import com.blackbuild.klum.cast.spi.Check;
+import com.blackbuild.klum.cast.spi.CheckContext;
 import org.codehaus.groovy.ast.AnnotatedNode;
+import org.codehaus.groovy.ast.AnnotationNode;
 
 import java.lang.annotation.Annotation;
 import java.lang.annotation.ElementType;
-import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
+import java.util.List;
 
-/** Varios methods for handling filters. */
-public class FilterHandler {
-
+/** Resolves built-in, name-bound and typed applicability filters. */
+public final class FilterHandler {
     private FilterHandler() {}
 
-    /**
-     * Determines if the given annotation is valid for the given target. This is done by checking all
-     * members on the target annotated with {@link Filter}. The annotation is only valid if all filters
-     * match.
-     *
-     * @param annotation the annotation to check
-     * @param target the target node to validate against
-     * @return {@code true} if the annotation is valid for the target, {@code false} otherwise
-     */
-    public static boolean isValidFor(Annotation annotation, AnnotatedNode target) {
-        return AnnotationHelper.getValuesOfMembersAnnotatedWith(annotation, Filter.class)
-                .map(v -> createFrom(v, target))
-                .allMatch(f -> f.isValidFor(target));
-    }
-
-    private static Filter.Function createFrom(Object memberValue, AnnotatedNode target) {
-        if (memberValue instanceof Class) {
-            Class<?> filterClass = (Class<?>) memberValue;
-            if (Filter.Function.class.isAssignableFrom(filterClass)) {
-                return doCreateFromType(filterClass);
-            } else {
-                throw new IllegalStateException("Filter class " + filterClass.getName() + " does not implement " + Filter.Function.class.getName());
+    static boolean isValidFor(Annotation annotation, AnnotatedNode target, String memberName, List<Annotation> path) {
+        for (Method method : annotation.annotationType().getDeclaredMethods()) {
+            if (!method.isAnnotationPresent(Filter.class)) continue;
+            try {
+                Object value = method.invoke(annotation);
+                if (value instanceof ElementType[] && !AstSupport.matchesOneOf((ElementType[]) value, target)) return false;
+                if (value instanceof String && !((String) value).isBlank() && !newFilter((String) value, target).appliesTo(context(annotation, target, memberName, path))) return false;
+                if (value instanceof Class && !value.equals(KlumCastValidator.None.class) && !newFilter((Class<?>) value).appliesTo(context(annotation, target, memberName, path))) return false;
+            } catch (ReflectiveOperationException exception) {
+                throw new IllegalStateException("Could not resolve applicability filter " + method.getName(), exception);
             }
-        } else if (memberValue instanceof String) {
-            return doCreateFromTypeName((String) memberValue, target);
-        } else if (memberValue instanceof ElementType[]) {
-            return doCreateFromElementTypes((ElementType[]) memberValue);
-        } else {
-            throw new IllegalStateException("Filter value must be a class, a string or an array of ElementType");
         }
+        return true;
     }
 
-    private static Filter.Function doCreateFromElementTypes(ElementType[] memberValue) {
-        if (memberValue.length == 0) return Filter.All.INSTANCE;
-        return new ElementTypeFilter(memberValue);
+    static boolean areApplicable(Class<?>[] types, CheckContext context) {
+        for (Class<?> type : types) if (!newFilter(type).appliesTo(context)) return false;
+        return true;
     }
 
-    private static Filter.Function doCreateFromTypeName(String memberValue, AnnotatedNode target) {
-        try {
-            if (memberValue.isBlank()) return Filter.All.INSTANCE;
-            return doCreateFromType(Class.forName(memberValue, true, AstSupport.getTargetClassLoader(target)));
-        } catch (ClassNotFoundException e) {
-            throw new IllegalStateException("Could not load filter class " + memberValue, e);
-        }
+    private static ApplicabilityFilter newFilter(String name, AnnotatedNode target) {
+        try { return newFilter(Class.forName(name, true, AstSupport.getTargetClassLoader(target))); }
+        catch (ClassNotFoundException exception) { throw new IllegalStateException("Could not load filter " + name, exception); }
     }
 
-    private static Filter.Function doCreateFromType(Class<?> filterClass) {
-        if (!Filter.Function.class.isAssignableFrom(filterClass))
-            throw new IllegalStateException("Filter class " + filterClass.getName() + " does not implement " + Filter.Function.class.getName());
-
-        try {
-            return (Filter.Function) filterClass.getDeclaredConstructor().newInstance();
-        } catch (InstantiationException | IllegalAccessException | NoSuchMethodException | InvocationTargetException e) {
-            throw new RuntimeException(e);
+    private static ApplicabilityFilter newFilter(Class<?> candidate) {
+        if (!ApplicabilityFilter.class.isAssignableFrom(candidate)) {
+            throw new IllegalStateException("Configured filter " + candidate.getName() + " does not implement " + ApplicabilityFilter.class.getName());
         }
+        try { return candidate.asSubclass(ApplicabilityFilter.class).getDeclaredConstructor().newInstance(); }
+        catch (ReflectiveOperationException exception) { throw new IllegalStateException("Could not instantiate filter " + candidate.getName(), exception); }
     }
 
-    static class ElementTypeFilter extends Filter.Function {
-        private final ElementType[] elementTypes;
+    private static CheckContext context(Annotation declaration, AnnotatedNode target, String memberName, List<Annotation> path) {
+        AnnotationNode placeholder = new AnnotationNode(org.codehaus.groovy.ast.ClassHelper.make(declaration.annotationType()));
+        return new CheckContext(placeholder, target, declaration, memberName,
+                new BindingMetadata(declaration, NoopCheck.class, NoopCheck.class.getName()), path);
+    }
 
-        ElementTypeFilter(ElementType[] elementTypes) {
-            this.elementTypes = elementTypes;
-        }
-
-        @Override
-        public boolean isValidFor(AnnotatedNode target) {
-            return AstSupport.matchesOneOf(elementTypes, target);
-        }
+    private static final class NoopCheck implements Check {
+        @Override public List<com.blackbuild.klum.cast.spi.Diagnostic> check(CheckContext context) { return List.of(); }
     }
 }

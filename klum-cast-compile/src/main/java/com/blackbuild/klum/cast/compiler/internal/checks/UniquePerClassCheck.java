@@ -23,20 +23,22 @@
  */
 package com.blackbuild.klum.cast.compiler.internal.checks;
 
-import com.blackbuild.klum.cast.checks.impl.KlumCastCheck;
+import com.blackbuild.klum.cast.checks.UniquePerClass;
+import com.blackbuild.klum.cast.spi.Check;
+import com.blackbuild.klum.cast.spi.CheckContext;
+import com.blackbuild.klum.cast.spi.Diagnostic;
+import org.codehaus.groovy.ast.AnnotatedNode;
+import org.codehaus.groovy.ast.ClassNode;
 
-import com.blackbuild.klum.cast.checks.NeedsReturnType;
-import com.blackbuild.klum.cast.validation.AstSupport;
-import org.codehaus.groovy.ast.*;
+import java.util.List;
 
-import java.util.Arrays;
-
-public class NeedsReturnTypeCheck extends KlumCastCheck<NeedsReturnType> {
-    @Override
-    protected void doCheck(AnnotationNode annotationToCheck, AnnotatedNode target) {
-        ClassNode actualReturnType = ((MethodNode) target).getReturnType();
-
-        if (Arrays.stream(controlAnnotation.value()).map(ClassHelper::make).noneMatch(r -> AstSupport.isAssignable(actualReturnType, r)))
-            throw new IllegalStateException("Method " + ((MethodNode) target).getName() + " must return one of " + Arrays.toString(controlAnnotation.value()) + ".");
+public final class UniquePerClassCheck implements Check {
+    private static final String METADATA_KEY = UniquePerClass.class.getName();
+    @Override public List<Diagnostic> check(CheckContext context) {
+        ClassNode owner = context.getTarget() instanceof ClassNode ? (ClassNode) context.getTarget() : context.getTarget().getDeclaringClass();
+        AnnotatedNode existing = owner.getNodeMetaData(METADATA_KEY);
+        if (existing != null) return Checks.failure(getClass(), context, "Annotation " + context.getValidatedAnnotation().getClassNode().getName() + " is used multiple times in class " + owner.getName());
+        owner.setNodeMetaData(METADATA_KEY, context.getTarget());
+        return List.of();
     }
 }

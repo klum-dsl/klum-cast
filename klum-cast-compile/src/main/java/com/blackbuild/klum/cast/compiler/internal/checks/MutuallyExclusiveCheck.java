@@ -23,20 +23,19 @@
  */
 package com.blackbuild.klum.cast.compiler.internal.checks;
 
-import com.blackbuild.klum.cast.checks.impl.KlumCastCheck;
+import com.blackbuild.klum.cast.checks.MutuallyExclusive;
+import com.blackbuild.klum.cast.spi.Check;
+import com.blackbuild.klum.cast.spi.CheckContext;
+import com.blackbuild.klum.cast.spi.Diagnostic;
 
-import com.blackbuild.klum.cast.checks.NeedsReturnType;
-import com.blackbuild.klum.cast.validation.AstSupport;
-import org.codehaus.groovy.ast.*;
-
+import java.util.List;
+import java.util.stream.Collectors;
 import java.util.Arrays;
 
-public class NeedsReturnTypeCheck extends KlumCastCheck<NeedsReturnType> {
-    @Override
-    protected void doCheck(AnnotationNode annotationToCheck, AnnotatedNode target) {
-        ClassNode actualReturnType = ((MethodNode) target).getReturnType();
-
-        if (Arrays.stream(controlAnnotation.value()).map(ClassHelper::make).noneMatch(r -> AstSupport.isAssignable(actualReturnType, r)))
-            throw new IllegalStateException("Method " + ((MethodNode) target).getName() + " must return one of " + Arrays.toString(controlAnnotation.value()) + ".");
+public final class MutuallyExclusiveCheck implements Check {
+    @Override public List<Diagnostic> check(CheckContext context) {
+        MutuallyExclusive control = (MutuallyExclusive) context.getControlAnnotation().orElseThrow(() -> new IllegalStateException("MutuallyExclusive requires a control annotation"));
+        List<String> members = Arrays.stream(control.value()).filter(context.getValidatedAnnotation().getMembers()::containsKey).collect(Collectors.toList());
+        return members.size() > 1 ? Checks.failure(getClass(), context, "Only one of " + members + " may be set") : List.of();
     }
 }
