@@ -34,8 +34,28 @@ is not a successful check result.
 consumers recompile. Replace legacy `Filter.Function` implementations with `ApplicabilityFilter`. These migration
 bridges will be removed for 1.0.
 
-Diagnostic template syntax, message overrides, related locations, and boolean-composition semantics are not part of
-this migration slice. They remain work for issues #17 and #22 respectively.
+## Structured diagnostic migration
+
+New checks return immutable `Diagnostic` values. Each diagnostic has a stable check-owned code, default message, primary
+Groovy AST node, optional named arguments, and optional related nodes. A check that supports message overrides declares
+its stable code and argument names through `getDiagnosticDefinitions()`. Codes and argument names are forward-compatible
+contracts; default prose and Groovy compiler rendering are not.
+
+Validation annotations can override a check's default prose with `@DiagnosticMessages`, for example
+`@DiagnosticMessage(code = "example.invalid-name", template = "Name {name} is reserved")`. Placeholders are named,
+must be declared by that code, and use `{{` and `}}` for literal braces. In a composed validation annotation, the nearest
+applicable override wins. Unknown codes, unknown placeholder names, malformed templates, and missing arguments are
+technical configuration failures, not invalid annotation uses.
+
+KlumCast emits one native Groovy compiler error per returned diagnostic, including its code and primary-node position.
+Related locations plus binding and composition-path information are rendered as supplementary context. Returned
+diagnostics are emitted deterministically in source and binding order.
+
+`ValidationException` and `KlumCastCheck.ErrorMessage` remain deprecated adapter-only migration types. A legacy
+`ValidationException` becomes one diagnostic using the adapter's check-class code. For source compatibility, the
+deprecated adapter retains its historical runtime-exception-to-message behavior; new `Check` implementations must return
+expected failures as diagnostics and let unexpected exceptions follow the technical-failure path with their causes
+preserved. Boolean branch aggregation and outcome semantics remain deferred to issue #22.
 
 # Overview
 

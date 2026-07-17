@@ -28,13 +28,20 @@ import com.blackbuild.klum.cast.spi.BindingMetadata
 import com.blackbuild.klum.cast.spi.CheckBinding
 import com.blackbuild.klum.cast.spi.CheckContext
 import com.blackbuild.klum.cast.spi.Diagnostic
+import com.blackbuild.klum.cast.spi.DiagnosticDefinition
 import com.blackbuild.klum.cast.checks.impl.KlumCastCheck
+import com.blackbuild.klum.cast.DiagnosticMessage
+import com.blackbuild.klum.cast.DiagnosticMessages
 import org.codehaus.groovy.ast.AnnotatedNode
 import org.codehaus.groovy.ast.AnnotationNode
 import org.codehaus.groovy.ast.ClassHelper
+import org.codehaus.groovy.control.MultipleCompilationErrorsException
 
+import java.lang.annotation.Annotation
+import java.lang.annotation.ElementType
 import java.lang.annotation.Retention
 import java.lang.annotation.RetentionPolicy
+import java.lang.annotation.Target
 
 class SpiBindingTest extends AstSpec {
 
@@ -226,8 +233,92 @@ class SplitTarget {}
         execute(ExecutionFailure.getAnnotation(CheckBinding))
 
         then:
-        def executionFailure = thrown(IllegalArgumentException)
-        executionFailure.message == 'direct check failure'
+        def executionFailure = thrown(IllegalStateException)
+        executionFailure.message.contains('Technical failure for check')
+        executionFailure.message.contains('ExecutionFailureCheck')
+        executionFailure.cause instanceof IllegalArgumentException
+        executionFailure.cause.message == 'direct check failure'
+    }
+
+    def "multiple structured diagnostics use nearest named overrides and preserve supplementary context"() {
+        given:
+        createClass '''
+package fixture
+
+import com.blackbuild.klum.cast.*
+import com.blackbuild.klum.cast.spi.*
+import org.codehaus.groovy.ast.ASTNode
+import java.lang.annotation.*
+import java.util.List
+import java.util.Map
+
+@Target(ElementType.ANNOTATION_TYPE)
+@Retention(RetentionPolicy.RUNTIME)
+@DiagnosticMessages([@DiagnosticMessage(code = 'fixture.first', template = 'outer {name}')])
+@InnerConstraint
+@interface OuterConstraint {}
+
+@Target(ElementType.ANNOTATION_TYPE)
+@Retention(RetentionPolicy.RUNTIME)
+@DiagnosticMessages([@DiagnosticMessage(code = 'fixture.first', template = 'inner {name}')])
+@CheckBinding(DiagnosticCheck)
+@interface InnerConstraint {}
+
+class DiagnosticCheck implements Check {
+    List<DiagnosticDefinition> getDiagnosticDefinitions() {
+        [new DiagnosticDefinition('fixture.first', ['name'] as Set),
+         new DiagnosticDefinition('fixture.second', [] as Set)]
+    }
+
+    List<Diagnostic> check(CheckContext context) {
+        [new Diagnostic('fixture.first', 'default first', context.validatedAnnotation, [name: 'first'], [context.target]),
+         new Diagnostic('fixture.second', 'default second', context.validatedAnnotation)]
+    }
+}
+'''
+        createClass '''
+package fixture
+import com.blackbuild.klum.cast.*
+import java.lang.annotation.*
+
+@Target(ElementType.TYPE)
+@Retention(RetentionPolicy.RUNTIME)
+@KlumCastValidated
+@OuterConstraint
+@interface StructuredValidated {}
+'''
+
+        when:
+        createClass '''
+package fixture
+@StructuredValidated
+class StructuredTarget {}
+'''
+
+        then:
+        def failure = thrown(MultipleCompilationErrorsException)
+        def output = failure.message
+        output.indexOf('[fixture.first] inner first') < output.indexOf('[fixture.second] default second')
+        output.contains('Validation binding: fixture.DiagnosticCheck')
+        output.contains('Validation path: fixture.OuterConstraint -> fixture.InnerConstraint')
+        output.contains('Related locations:')
+    }
+
+    def "unknown codes and invalid named templates are technical configuration failures"() {
+        when:
+        executeControl(UnknownCodeConstraint.getAnnotation(UnknownCodeControl))
+
+        then:
+        def unknownCode = thrown(IllegalStateException)
+        unknownCode.message.contains('does not declare diagnostic message code missing')
+
+        when:
+        executeControl(InvalidTemplateConstraint.getAnnotation(InvalidTemplateControl))
+
+        then:
+        def invalidTemplate = thrown(IllegalStateException)
+        invalidTemplate.message.contains('has an invalid template for fixture.known')
+        invalidTemplate.cause instanceof IllegalArgumentException
     }
 
     def "deprecated adapter clears mutable invocation fields after every call"() {
@@ -250,6 +341,11 @@ class SplitTarget {}
     private static void execute(CheckBinding binding) {
         new ValidationHandler(new AnnotationNode(ClassHelper.make(SpiBindingTest)), ClassHelper.make(SpiBindingTest))
                 .handleSingleAnnotation(binding)
+    }
+
+    private static void executeControl(Annotation control) {
+        new ValidationHandler(new AnnotationNode(ClassHelper.make(SpiBindingTest)), ClassHelper.make(SpiBindingTest))
+                .handleSingleAnnotation(control)
     }
 
     private static CheckContext legacyContext(String member, CheckBinding binding) {
@@ -279,6 +375,38 @@ class ExecutionFailureCheck implements Check {
     @Override
     List<Diagnostic> check(CheckContext context) {
         throw new IllegalArgumentException('direct check failure')
+    }
+}
+
+@Target(ElementType.ANNOTATION_TYPE)
+@Retention(RetentionPolicy.RUNTIME)
+@DiagnosticMessages([@DiagnosticMessage(code = 'missing', template = 'nope')])
+@CheckBinding(KnownDiagnosticCheck)
+@interface UnknownCodeControl {}
+
+@Target(ElementType.ANNOTATION_TYPE)
+@Retention(RetentionPolicy.RUNTIME)
+@UnknownCodeControl
+@interface UnknownCodeConstraint {}
+
+@Target(ElementType.ANNOTATION_TYPE)
+@Retention(RetentionPolicy.RUNTIME)
+@DiagnosticMessages([@DiagnosticMessage(code = 'fixture.known', template = 'bad {unknown}')])
+@CheckBinding(KnownDiagnosticCheck)
+@interface InvalidTemplateControl {}
+
+@Target(ElementType.ANNOTATION_TYPE)
+@Retention(RetentionPolicy.RUNTIME)
+@InvalidTemplateControl
+@interface InvalidTemplateConstraint {}
+
+class KnownDiagnosticCheck implements Check {
+    @Override
+    List<Diagnostic> check(CheckContext context) { [] }
+
+    @Override
+    List<DiagnosticDefinition> getDiagnosticDefinitions() {
+        [new DiagnosticDefinition('fixture.known', ['name'] as Set)]
     }
 }
 
