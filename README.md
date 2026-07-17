@@ -302,18 +302,25 @@ Note that Target and Retention annotations are omitted in the examples below for
 ```
 ## Custom validations
 
-Custom validation can be declared using the `@KlumCastValidator` annotation. This annotation points to the class implementing the validation. The class must extend `KlumCastCheck` and have the actual validator annotation as type parameter. This allows for easy parametrizing of the validator.
+New custom validations implement the stateless `Check` interface. A check receives one immutable `CheckContext` and
+returns zero or more `Diagnostic` values; it does not inherit mutable invocation fields. The preferred co-located or
+nested form uses the type-safe `@CheckBinding`. Use name-based `@KlumCastValidator("fully.qualified.CheckName")` only
+when an annotations artifact must compile separately from its check implementation.
 
-So usually, a custom validation consist of two elements, the control annotation (which is eventually placed on the target annotation to mark it as validated) and a validator class. The control annotation needs to be annotated with `@KlumCastValidator` and the validator class needs to extend `KlumCastCheck`.
+Typically a custom validation has a control annotation, placed on the annotation to validate, and a check class. Both
+must be on the custom-check author's classpath through `klum-cast-spi`.
 
 ## The control annotation
 
-The control annotation needs to be of Runtime retention and target only Annotations. It is annotated with `@KlumCastValidator` which points to the classname or type of the validator class. The annotation should have a clear name and contain further members to parametrize the validator. 
+The control annotation has runtime retention and targets annotation definitions. Bind the check with `@CheckBinding` and
+use its members to parameterize the constraint.
 
 ```groovy
+import com.blackbuild.klum.cast.spi.CheckBinding
+
 @Target(ElementType.ANNOTATION_TYPE)
 @Retention(RetentionPolicy.RUNTIME)
-@KlumCastValidator("my.NameMustMatchCheck")
+@CheckBinding(NameMustMatchCheck)
 @interface NameMustMatch {
     String value()
 }
@@ -321,71 +328,113 @@ The control annotation needs to be of Runtime retention and target only Annotati
 
 ## The validator class
 
-The validator class extends `KlumCastCheck` and have the annotation as Type-Parameter. The actual check is usually implemented by the `doCheck` method, which has access to the following information:
+The check is a concrete class with an accessible no-argument constructor. It receives all invocation data from
+`CheckContext`:
 
-- the control annotation (as annotation object, `NameMustMatch` in the example above (if the KlumCastValidatior annotation is placed directly on the annotation to be validated, this can be null)
-- the `KlumCastValidator` annotation (which can have an additional String array to further parametrize the validator), in the example above this would be in instance of `@KlumCastValidator("my.NameMustMatch")`
-- the annotation target, i.e. the annotated element itself as an `AnnotatedNode` instance
-- the annotation to validate, i.e. the annotation that is annotated with the control annotation, as an `AnnotationNode` instance
-- if the control annotation is placed on a member of the annotation to validate, that member's name as a String
+- `context.getControlAnnotation(NameMustMatch)` obtains the typed control annotation.
+- `context.getTarget()` and `context.getValidatedAnnotation()` are the Groovy AST target and annotation use.
+- `context.getMemberName()`, `context.getBinding()`, and `context.getCompositionPath()` provide member, binding, and
+  composition information without mutable state.
 
-The last to elements are Groovy-Compiler AST-Nodes.
-
-The `doCheck` should perform necessary validations and eventually either return or throw an exception. If an exception is thrown, it is converted to a compilation error.
+The check declares stable codes and named arguments for any diagnostic it allows validation annotations to override.
+It returns expected annotation-use failures as diagnostics. Unexpected exceptions are technical failures and retain their
+causes; do not use them for normal validation failures.
 
 ```groovy
-class NameMustMatchCheck extends KlumCastCheck<NameMustMatch> {
+import com.blackbuild.klum.cast.spi.Check
+import com.blackbuild.klum.cast.spi.CheckContext
+import com.blackbuild.klum.cast.spi.Diagnostic
+import com.blackbuild.klum.cast.spi.DiagnosticDefinition
+
+class NameMustMatchCheck implements Check {
+    static final String INVALID_NAME = 'example.name-must-match.invalid-name'
+
     @Override
-    protected void doCheck(AnnotationNode annotationToCheck, AnnotatedNode target) {
-        if (!target.getText().startsWith(controlAnnotation.value())) {
-            throw new IllegalStateException("Target element must start with ${controlAnnotation.value()}")
-        }
+    List<DiagnosticDefinition> getDiagnosticDefinitions() {
+        [DiagnosticDefinition.of(INVALID_NAME, 'prefix', 'targetText')]
+    }
+
+    @Override
+    List<Diagnostic> check(CheckContext context) {
+        NameMustMatch control = context.getControlAnnotation(NameMustMatch)
+                .orElseThrow { new IllegalStateException('NameMustMatch control annotation is required') }
+        String targetText = context.target.text
+        if (targetText.startsWith(control.value())) return []
+
+        [new Diagnostic(
+                INVALID_NAME,
+                "Target element must start with ${control.value()}",
+                context.validatedAnnotation,
+                [prefix: control.value(), targetText: targetText],
+                [context.target]
+        )]
     }
 }
 ```
+
+For example, a composed validation annotation can override this default message with
+`@DiagnosticMessages([@DiagnosticMessage(code = NameMustMatchCheck.INVALID_NAME, template = "{targetText} must start with {prefix}")])`.
+
 ### Filtering Checks
 
-Filters can be set to determine that a check is only valid in certain condition. This can be done in three ways:
+Filters determine whether a binding applies; a filtered-out binding is not a successful check result. Attach typed
+filters through `@CheckBinding(filters = [...])`; each implements `ApplicabilityFilter` and receives the same immutable
+context. Name-bound filters remain available through `@KlumCastValidator` and `@Filter` members.
 
-#### KlumCastCheck.isValidFor(AnnotatedNode target)
-By overriding the `isValidFor(AnnotatedNode target)` method, custom checks can be implemented directly in the check implementation.
+```groovy
+import com.blackbuild.klum.cast.spi.ApplicabilityFilter
+import com.blackbuild.klum.cast.spi.CheckContext
+import org.codehaus.groovy.ast.ClassNode
 
-### KlumCastValidator.validFor()
+class ClassesOnly implements ApplicabilityFilter {
+    @Override
+    boolean appliesTo(CheckContext context) {
+        context.target instanceof ClassNode
+    }
+}
+```
 
-The KlumCastValidator Annotation has a member `validFor` of type `ElementType[]`. Only if the annotated target is one of the listed types here, the Check is executed.
-
-### @Filter annotation-members on annotations
-
-By annotation a member of an annotation with `@Filter`, that member becomes a filter for its annotation chain. Filter members can either be
-
-- An `ElementType[]`, in which case the filter behaves exactly as `KlumCastValidator.validFor`
-- A Class object containing a subclass of `Filter.Function` which acts as a custom filter
-- A String containing the fully qualified Class-name of the filter implementation
-
-Note that in order for a check to be executed, all checks of the annotation chain must match.
+Built-in target-kind filtering through `KlumCastValidator.validForTargets()` remains available for name-bound
+declarations. All filters on one binding are conjunctive.
 
 ## Check as inner class
 
-For convenience, the validator class can be implemented as inner class to the annotation itself. In that case, the alternative syntax using `type` instead of `value` is useful.
+For convenience, a type-safe check can be nested in its control annotation.
 
 ```groovy
+import com.blackbuild.klum.cast.spi.Check
+import com.blackbuild.klum.cast.spi.CheckBinding
+import com.blackbuild.klum.cast.spi.CheckContext
+import com.blackbuild.klum.cast.spi.Diagnostic
+import com.blackbuild.klum.cast.spi.DiagnosticDefinition
+
 @Target(ElementType.ANNOTATION_TYPE)
 @Retention(RetentionPolicy.RUNTIME)
-@KlumCastValidator(type = NeedsSomething.Check.class)
-@interface NeedsSomething
+@CheckBinding(NeedsSomething.ValidationCheck)
+@interface NeedsSomething {
     String value()
 
-    class Check extends KlumCastCheck<NeedsSomething> {
+    class ValidationCheck implements Check {
+        static final String NOT_ON_FOO = 'example.needs-something.not-on-foo'
+
         @Override
-        protected void doCheck(AnnotationNode annotationToCheck, AnnotatedNode target) {
-            if (target.getText().equalsIgnoreCase("foo")) {
-                throw new IllegalStateException("must not be placed on Foos")
-            }
+        List<DiagnosticDefinition> getDiagnosticDefinitions() {
+            [DiagnosticDefinition.of(NOT_ON_FOO)]
+        }
+
+        @Override
+        List<Diagnostic> check(CheckContext context) {
+            if (!context.target.text.equalsIgnoreCase('foo')) return []
+            [new Diagnostic(
+                    NOT_ON_FOO,
+                    'Must not be placed on Foos',
+                    context.validatedAnnotation
+            )]
         }
     }
-    
 }
 ```
 
-Note that annotations and KlumCastValidator annotations can be freely mixed, i.e. a control annotation can have multiple KlumCastValidator annotations as well as multiple control annotations (which themselves can have multiple KlumCastValidator annotations or even more control annotations). Just remember that annotations neither having
-`KlumCastValidated` nor `KlumCastValidator` are ignored by the AST-Transformation.
+Validation annotations can be composed and may contain multiple typed or name-based bindings. Annotations without a
+KlumCast validation marker or binding are ignored by the transformation. `KlumCastCheck`, its mutable fields, and the
+raw `KlumCastValidator.type()` member are deprecated 0.4 migration bridges; do not use them in new examples.
