@@ -3,6 +3,40 @@ KlumCast
 
 Check those annotations with style!
 
+## 0.4 custom-check migration
+
+KlumCast 0.4 separates declarative metadata, the custom-check SPI, and compiler activation into three artifacts:
+
+- `com.blackbuild.klum.cast:klum-cast-annotations` contains annotations and name-based bindings. It has no Groovy
+  compiler dependency.
+- `com.blackbuild.klum.cast:klum-cast-spi` contains `Check`, `CheckContext`, `Diagnostic`,
+  `ApplicabilityFilter`, and the typed `@CheckBinding` annotation. Custom-check authors add this dependency explicitly;
+  it deliberately exposes Groovy compiler AST types and therefore publishes Groovy as an API dependency.
+- `com.blackbuild.klum.cast:klum-cast-compile` activates the service-loaded semantic-analysis transformation and
+  supplies both sibling artifacts transitively.
+
+New checks implement `Check` and return zero or more `Diagnostic` values from `check(CheckContext)`. A context is
+immutable and provides the validated annotation, target, applicable control annotation, member name, binding metadata,
+and composition path. Checks and `ApplicabilityFilter` implementations require an accessible no-argument constructor
+and must be stateless: the compiler may reuse an instance during one compilation and never retains it across
+compilations. A returned diagnostic is an expected annotation-use violation; an exception is a technical failure and
+retains its cause.
+
+Use `@CheckBinding(MyAnnotation.NestedCheck.class)` for a strongly typed co-located or nested binding. Use
+`@KlumCastValidator("example.SplitCheck")` for a name binding when a metadata module must compile separately from an
+implementation module. Typed filters are declared with `@CheckBinding(filters = ...)`; name-bound filters remain
+available through `@Filter` annotation members. All filters on one binding are conjunctive, and a filtered-out binding
+is not a successful check result.
+
+`com.blackbuild.klum.cast.checks.impl.KlumCastCheck` remains only as a deprecated 0.4 migration adapter in
+`klum-cast-spi`. Move new code to `Check`; do not rely on its inherited mutable fields. The legacy
+`KlumCastValidator.type()` member is a deprecated raw `Class<?>` bridge and loses source-level type checking when
+consumers recompile. Replace legacy `Filter.Function` implementations with `ApplicabilityFilter`. These migration
+bridges will be removed for 1.0.
+
+Diagnostic template syntax, message overrides, related locations, and boolean-composition semantics are not part of
+this migration slice. They remain work for issues #17 and #22 respectively.
+
 # Overview
 
 KlumCast is validator for annotation placement for Groovy based schemas. It allows to conveniently validate AST driving annotations before the actual transformation is performed and thus helps keep the transformation code clean.
