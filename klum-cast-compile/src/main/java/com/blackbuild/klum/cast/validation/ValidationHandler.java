@@ -25,6 +25,7 @@ package com.blackbuild.klum.cast.validation;
 
 import com.blackbuild.klum.cast.KlumCastValidated;
 import com.blackbuild.klum.cast.KlumCastValidator;
+import com.blackbuild.klum.cast.checks.OneCheckMustMatch;
 import com.blackbuild.klum.cast.DiagnosticMessage;
 import com.blackbuild.klum.cast.DiagnosticMessages;
 import com.blackbuild.klum.cast.spi.BindingMetadata;
@@ -36,6 +37,7 @@ import com.blackbuild.klum.cast.spi.DiagnosticDefinition;
 import com.blackbuild.klum.cast.checks.impl.KlumCastCheck;
 import org.codehaus.groovy.ast.AnnotatedNode;
 import org.codehaus.groovy.ast.AnnotationNode;
+import org.codehaus.groovy.ast.ASTNode;
 
 import java.lang.annotation.Annotation;
 import java.lang.reflect.AnnotatedElement;
@@ -49,9 +51,12 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Set;
 import java.util.HashSet;
+import java.util.stream.Collectors;
 
 /** Internal compiler orchestration for the public check SPI. */
 public class ValidationHandler {
+
+    private enum InvocationOutcome { NOT_APPLICABLE, PASSED, FAILED }
 
     private final AnnotationNode annotationToValidate;
     private final AnnotatedNode target;
@@ -99,21 +104,38 @@ public class ValidationHandler {
         try { validate(method); } finally { currentMember = null; }
     }
 
-    private void validate(AnnotatedElement element) {
-        RepeatableAnnotationsSupport.getAllAnnotations(element).forEach(this::handleSingleAnnotation);
+    private InvocationOutcome validate(AnnotatedElement element) {
+        List<Annotation> annotations = RepeatableAnnotationsSupport.getAllAnnotations(element)
+                .collect(Collectors.toList());
+        boolean hasOrComposition = annotations.stream().anyMatch(OneCheckMustMatch.class::isInstance);
+        boolean applicable = false;
+        boolean failed = false;
+        for (Annotation annotation : annotations) {
+            if (hasOrComposition && isOrBranch(annotation)) continue;
+            InvocationOutcome outcome = handleSingleAnnotation(annotation);
+            applicable |= outcome != InvocationOutcome.NOT_APPLICABLE;
+            failed |= outcome == InvocationOutcome.FAILED;
+        }
+        if (!applicable) return InvocationOutcome.NOT_APPLICABLE;
+        return failed ? InvocationOutcome.FAILED : InvocationOutcome.PASSED;
     }
 
-    void handleSingleAnnotation(Annotation annotation) {
-        if (!FilterHandler.isValidFor(annotation, target, currentMember, compositionPath)) return;
+    InvocationOutcome handleSingleAnnotation(Annotation annotation) {
+        if (!FilterHandler.isValidFor(annotation, target, currentMember, compositionPath)) {
+            return InvocationOutcome.NOT_APPLICABLE;
+        }
         compositionPath.add(annotation);
         try {
-            if (annotation instanceof KlumCastValidator) {
-                executeLegacyBinding((KlumCastValidator) annotation);
+            if (annotation instanceof OneCheckMustMatch) {
+                return executeOrComposition((OneCheckMustMatch) annotation);
+            } else if (annotation instanceof KlumCastValidator) {
+                return executeLegacyBinding((KlumCastValidator) annotation);
             } else if (annotation instanceof CheckBinding) {
-                executeTypedBinding((CheckBinding) annotation);
+                return executeTypedBinding((CheckBinding) annotation);
             } else if (isValidated(annotation)) {
-                validate(annotation.annotationType());
+                return validate(annotation.annotationType());
             }
+            return InvocationOutcome.NOT_APPLICABLE;
         } finally {
             compositionPath.remove(compositionPath.size() - 1);
         }
@@ -135,20 +157,20 @@ public class ValidationHandler {
         return false;
     }
 
-    private void executeLegacyBinding(KlumCastValidator binding) {
+    private InvocationOutcome executeLegacyBinding(KlumCastValidator binding) {
         boolean hasName = !binding.value().isEmpty();
         boolean hasType = !binding.type().equals(KlumCastValidator.None.class);
         if (hasName == hasType) throw new IllegalStateException("@KlumCastValidator must select exactly one check binding.");
         Class<?> candidate = hasType ? binding.type() : load(binding.value());
-        execute(binding, candidate, hasName ? binding.value() : candidate.getName(), new Class[0]);
+        return execute(binding, candidate, hasName ? binding.value() : candidate.getName(), new Class[0]);
     }
 
-    private void executeTypedBinding(CheckBinding binding) {
-        execute(binding, binding.value(), binding.value().getName(), binding.filters());
+    private InvocationOutcome executeTypedBinding(CheckBinding binding) {
+        return execute(binding, binding.value(), binding.value().getName(), binding.filters());
     }
 
-    private void execute(Annotation declaration, Class<?> candidate, String implementationName,
-                         Class<?>[] filterTypes) {
+    private InvocationOutcome execute(Annotation declaration, Class<?> candidate, String implementationName,
+                                      Class<?>[] filterTypes) {
         if (!Check.class.isAssignableFrom(candidate)) {
             throw new IllegalStateException("Configured check " + implementationName + " does not implement " + Check.class.getName());
         }
@@ -156,7 +178,7 @@ public class ValidationHandler {
         BindingMetadata metadata = new BindingMetadata(declaration, checkType, implementationName);
         Annotation control = findControlAnnotation();
         CheckContext context = new CheckContext(annotationToValidate, target, control, currentMember, metadata, compositionPath);
-        if (!FilterHandler.areApplicable(filterTypes, context)) return;
+        if (!FilterHandler.areApplicable(filterTypes, context)) return InvocationOutcome.NOT_APPLICABLE;
         try {
             Check check = checkType.getDeclaredConstructor().newInstance();
             Map<String, DiagnosticDefinition> definitions = diagnosticDefinitions(check, metadata);
@@ -173,12 +195,85 @@ public class ValidationHandler {
                 }
                 diagnostics.add(render(diagnostic.withProvenance(metadata, compositionPath)));
             }
+            return emitted.isEmpty() ? InvocationOutcome.PASSED : InvocationOutcome.FAILED;
         } catch (ReflectiveOperationException exception) {
             throw technicalFailure(metadata, "could not instantiate it with an accessible no-argument constructor", exception);
         } catch (RuntimeException exception) {
             if (exception.getMessage() != null && exception.getMessage().startsWith("Technical failure for check ")) throw exception;
             throw technicalFailure(metadata, "threw while executing", exception);
         }
+    }
+
+    private InvocationOutcome executeOrComposition(OneCheckMustMatch composition) {
+        Annotation holder = findOrCompositionHolder();
+        if (holder == null) {
+            throw new IllegalStateException("Technical failure for OR composition: @OneCheckMustMatch must be part of a validation annotation");
+        }
+        List<Annotation> branches = directOrBranches(holder);
+        if (branches.isEmpty()) branches = legacyOrBranches(holder);
+
+        int firstBranchDiagnostic = diagnostics.size();
+        boolean applicable = false;
+        boolean passed = false;
+        for (Annotation branch : branches) {
+            InvocationOutcome outcome = handleSingleAnnotation(branch);
+            applicable |= outcome != InvocationOutcome.NOT_APPLICABLE;
+            passed |= outcome == InvocationOutcome.PASSED;
+        }
+        if (passed) {
+            diagnostics.subList(firstBranchDiagnostic, diagnostics.size()).clear();
+            return InvocationOutcome.PASSED;
+        }
+        if (!applicable) return InvocationOutcome.NOT_APPLICABLE;
+
+        List<ASTNode> relatedNodes = diagnostics.subList(firstBranchDiagnostic, diagnostics.size())
+                .stream().map(Diagnostic::getPrimaryNode).collect(Collectors.toList());
+        String message = composition.message().isEmpty()
+                ? "At least one branch of " + holder.annotationType().getSimpleName() + " must match."
+                : composition.message();
+        BindingMetadata binding = new BindingMetadata(composition, OneCheckMustMatchCheck.class,
+                OneCheckMustMatchCheck.class.getName());
+        diagnostics.add(new Diagnostic("klum-cast.composition.or.no-match", message, annotationToValidate,
+                Collections.emptyMap(), relatedNodes).withProvenance(binding, compositionPath));
+        return InvocationOutcome.FAILED;
+    }
+
+    private static boolean isOrBranch(Annotation annotation) {
+        return !(annotation instanceof OneCheckMustMatch) && isValidated(annotation);
+    }
+
+    private static List<Annotation> directOrBranches(Annotation holder) {
+        return Arrays.stream(holder.annotationType().getDeclaredAnnotations())
+                .filter(ValidationHandler::isOrBranch)
+                .sorted(Comparator.comparing(annotation -> annotation.annotationType().getName()))
+                .collect(Collectors.toList());
+    }
+
+    private static List<Annotation> legacyOrBranches(Annotation holder) {
+        return Arrays.stream(holder.annotationType().getDeclaredMethods())
+                .filter(method -> method.getReturnType().isAnnotation())
+                .sorted(Comparator.comparing(Method::getName))
+                .map(method -> legacyOrBranch(holder, method))
+                .collect(Collectors.toList());
+    }
+
+    private static Annotation legacyOrBranch(Annotation holder, Method method) {
+        try {
+            return (Annotation) method.invoke(holder);
+        } catch (ReflectiveOperationException exception) {
+            throw new IllegalStateException("Technical failure for OR composition: could not read legacy branch "
+                    + method.getName(), exception);
+        }
+    }
+
+    private Annotation findOrCompositionHolder() {
+        for (int index = compositionPath.size() - 1; index >= 0; index--) {
+            Annotation candidate = compositionPath.get(index);
+            if (!(candidate instanceof OneCheckMustMatch)
+                    && !(candidate instanceof KlumCastValidator)
+                    && !(candidate instanceof CheckBinding)) return candidate;
+        }
+        return null;
     }
 
     private static Map<String, DiagnosticDefinition> diagnosticDefinitions(Check check, BindingMetadata binding) {

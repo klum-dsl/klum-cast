@@ -31,24 +31,25 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 /**
- * Basic or-composition for checks. Due to the nature of the annotation definition, this is somewhat complicated.
- * <ul>
- *     <li>OneCheckMustMatch must be set on an annotation that is designated a {@link com.blackbuild.klum.cast.KlumCastValidated}
- *     (hence called 'aggregation annotation'</li>
- *     <li>The aggregation annotation contains members of the type of other validation annotations</li>
- *     <li>These usually have a default value.</li>
- *     <li>The aggregation annotation must be the ultimate validation annotation, but must be included in another annotation</li>
- *     <li>The Check of any annotation branch has no access to the annotation stack outside of the branch annotation</li>
- * </ul>
+ * OR composition for validation annotations.
+ *
+ * <p>New declarations put their branch validation annotations directly on the composed validation annotation. The
+ * compiler evaluates those branches in deterministic annotation-type-name order through the normal check SPI. A
+ * filtered branch is not a match. When no applicable branch passes, the compiler retains every branch diagnostic and
+ * adds this annotation's summary diagnostic. {@link #message()} customizes that summary without replacing the branch
+ * diagnostics.</p>
+ *
+ * <p>Annotation-valued branch members are a deprecated source form. They remain supported as a binary migration
+ * bridge for declarations compiled before 0.4, but new source must use direct branch annotations.</p>
  * <p>Example:</p>
  * <pre><code>
  * {literal @}Target(ElementType.ANNOTATION_TYPE)
  * {literal @}Retention(RetentionPolicy.RUNTIME)
  * {literal @}KlumCastValidated
- * {literal @}OneCheckMustMatch
+ * {literal @}OneCheckMustMatch(message = "A closure needs a return type or one parameter")
+ * {literal @}NumberOfParameters(1)
+ * {literal @}NeedsReturnType(Closure.class)
  * {literal @}interface ClosureOrSingleParameter {
- *     NumberOfParameters oneParam() default {literal @}NumberOfParameters(1);
- *     NeedsReturnType returnType() default {literal @}NeedsReturnType(Closure.class);
  * }
  * {literal @}Target([ElementType.METHOD, ElementType.TYPE])
  * {literal @}Retention(RetentionPolicy.RUNTIME)
@@ -62,4 +63,15 @@ import java.lang.annotation.Target;
 @Target(ElementType.ANNOTATION_TYPE)
 @Retention(RetentionPolicy.RUNTIME)
 @KlumCastValidator("com.blackbuild.klum.cast.validation.OneCheckMustMatchCheck")
-public @interface OneCheckMustMatch {}
+public @interface OneCheckMustMatch {
+
+    /**
+     * Optional summary used when no applicable branch passes.
+     *
+     * <p>The summary is supplementary: branch diagnostics, including their codes, positions, binding identities,
+     * composition paths, and related locations, are still emitted.</p>
+     *
+     * @return summary text, or an empty string for the engine default
+     */
+    String message() default "";
+}
