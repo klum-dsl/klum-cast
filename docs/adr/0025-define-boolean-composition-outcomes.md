@@ -27,6 +27,10 @@ applicable branches, their defined truth tables are:
 
 The delivered tracer is OR only. Its direct branches are validation annotations placed on the composed validation
 annotation alongside `@OneCheckMustMatch`; the engine no longer derives new declarations from annotation-valued members.
+Each composed validation annotation declares one composition node. A nested composition is a branch validation
+annotation in its own right; when it has no reuse value, it may be declared as a nested annotation type inside its
+parent in Java source so that its otherwise non-user-facing branch declarations stay together. Groovy 2.4 cannot parse
+such nested annotation declarations, so Groovy-authored compositions use top-level branch annotation types.
 When OR fails, it emits every failing branch diagnostic in branch order plus an engine-owned
 `klum-cast.composition.or.no-match` summary diagnostic. The summary has the validated annotation's source position,
 related branch positions, and the composition strategy's provenance. A custom `message` on `@OneCheckMustMatch` changes

@@ -108,6 +108,22 @@ class FilteredTarget {}
         !valueHolder.calls
     }
 
+    def "a Java nested annotation keeps a non-reusable inner composition together"() {
+        when:
+        createClass '''
+package fixture
+import com.blackbuild.klum.cast.checks.NestedOrFixture
+@NestedOrFixture.Validated
+class NestedTarget {}
+'''
+
+        then:
+        def failure = thrown(MultipleCompilationErrorsException)
+        failure.message.contains('[com.blackbuild.klum.cast.checks.NestedOrFixture$FailingCheck] inner failure')
+        failure.message.contains('[klum-cast.composition.or.no-match] Inner composition did not match')
+        failure.message.contains('[klum-cast.composition.or.no-match] Outer composition did not match')
+    }
+
     def "a technical branch failure propagates with its cause"() {
         given:
         createClass compositionSource()
@@ -252,7 +268,8 @@ class ExplodingCheck implements Check {
 @OneCheckMustMatch(message = 'Outer did not match')
 @InnerAllFail
 @FilteredBranch
-@interface NestedAllFail {}
+@interface NestedAllFail {
+}
 
 @Target(ElementType.TYPE)
 @Retention(RetentionPolicy.RUNTIME)
