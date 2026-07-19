@@ -20,6 +20,15 @@ durable trade-offs under `docs/adr/`. See `docs/agents/domain.md`.
 Follow `docs/agents/coding-style.md`. The current build targets JDK 11 and verifies Groovy 2.4, 3, and 4 using the commands
 and lane policy in `docs/agents/testing.md`. Issue #455 owns any cross-repository multi-Groovy redesign.
 
+## License plugin
+
+If license-plugin configuration conflicts with a planned change, ask for the plugin or its configuration to be changed.
+Never rename, retype, or otherwise adapt files merely to circumvent license-header handling; for example, do not rename a
+`.txt` file to `.java` because the plugin cannot handle `.txt`.
+
+An outdated license-file year requires a dedicated issue. If an outdated year or related structural problem is discovered
+incidentally during another task, ask for confirmation before creating the separate issue or task.
+
 ## Issue branches and commits
 
 Implement issues on a dedicated branch using small, reasoned commits. Review and, when useful, rewrite local history before
