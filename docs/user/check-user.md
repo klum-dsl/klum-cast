@@ -5,8 +5,9 @@ Groovy compilation that uses it. This journey turns the aggregator's `@SetterLik
 
 ## Prerequisites and dependencies
 
-Use Java 17 and Groovy 3, 4, or 5. Add the artifact containing the validated annotation normally, and put
-`klum-cast-compile` on the Groovy compilation classpath:
+The [example project-module overview](README.md#example-project-modules) uses the dependency chain `:custom-checks` →
+`:domain-annotations` → `:consumer`. This page configures `:consumer`. Use Java 17 and Groovy 3, 4, or 5, and put
+`klum-cast-compile` on this module's Groovy compilation classpath:
 
 ```groovy
 dependencies {
@@ -15,19 +16,24 @@ dependencies {
 }
 ```
 
-If this module declares `@DomainSetter` itself, it also needs
-`implementation "com.blackbuild.klum.cast:klum-cast-annotations:$klumCastVersion"` and the artifact containing
-`@SetterLike`. Maven uses the default compile scope for annotation artifacts and `provided` for
-`klum-cast-compile`. The compiler artifact is the activation switch; annotations and SPI alone do not run validation.
-See the [shared dependency table](README.md#dependencies-by-role).
+Because `:domain-annotations` owns `@DomainSetter` and exports the annotations used in its public metadata, the dependency
+on that project makes `@DomainSetter`, `@SetterLike`, and their required annotation types available to `:consumer`; do not
+repeat those dependencies here. Maven uses the default compile scope for `domain-annotations` and `provided` for
+`klum-cast-compile`.
+
+If a different layout declares `@DomainSetter` in the module currently being configured, that module also owns the
+validated annotation. It must then declare direct dependencies on `klum-cast-annotations` and the artifact containing
+`@SetterLike`, using `api` when it exposes `@DomainSetter` to another module. The compiler artifact remains the activation
+switch; annotations and SPI alone do not run validation. See the
+[shared dependency table](README.md#dependencies-by-role).
 
 ## 1. Declare a validated annotation
 
 The executable
 [`@DomainSetter`](../../klum-cast-compile/src/test/java/com/blackbuild/klum/cast/docs/onboarding/DomainSetter.java)
 targets methods, has runtime retention, is marked `@KlumCastValidated`, and applies the reusable `@SetterLike` validation
-annotation. `@DomainSetter` is the validated annotation; `@SetterLike` is a validation annotation. The Java modules that
-contain them are artifacts, not user roles.
+annotation. `@DomainSetter` is the validated annotation; `@SetterLike` is a validation annotation. Both live in
+`:domain-annotations` in this example; that project module is an artifact boundary, not a user role.
 
 ## 2. Use it in Groovy source
 

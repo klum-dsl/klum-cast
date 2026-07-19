@@ -5,7 +5,9 @@ annotation whose check accepts `setName` and reports an actionable diagnostic fo
 
 ## Prerequisites and dependencies
 
-Use Java 17 and select the Groovy 3, 4, or 5 compiler that matches the compilation where the check will run.
+The [example project-module overview](README.md#example-project-modules) uses the dependency chain `:custom-checks` →
+`:domain-annotations` → `:consumer`. This page configures `:custom-checks`. Use Java 17 and select the Groovy 3, 4, or 5
+compiler that matches the compilation where the check will run.
 
 ```groovy
 dependencies {

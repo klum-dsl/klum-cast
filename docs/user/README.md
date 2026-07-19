@@ -18,6 +18,22 @@ All examples form one small `@DomainSetter` journey and are compiled by
 [`RoleBasedOnboardingDocumentaryTest`](../../klum-cast-compile/src/test/groovy/com/blackbuild/klum/cast/docs/onboarding/RoleBasedOnboardingDocumentaryTest.groovy)
 in every supported Groovy lane.
 
+## Example project modules
+
+The three roles can be combined in one module. To make ownership and dependency direction unambiguous, this journey uses
+three example project modules:
+
+| Example module | Owns | Direct dependencies |
+|---|---|---|
+| `:custom-checks` | `@MethodNameStartsWith`, its check, and its filter | `compileOnly` KlumCast SPI and the matching Groovy compiler |
+| `:domain-annotations` | composed `@SetterLike` and validated `@DomainSetter` | `api` KlumCast annotations and `api project(":custom-checks")` |
+| `:consumer` | Groovy targets that use `@DomainSetter` | `implementation project(":domain-annotations")` and `compileOnly` KlumCast compiler activation |
+
+The `api` scopes assume Gradle's `java-library` plugin. They are intentional because the dependency annotations are
+recorded in public, runtime-retained annotation metadata that a downstream Groovy compilation must inspect. Maven's
+equivalent is the default transitive compile scope. If you combine modules, collapse the corresponding project edge but
+keep direct dependencies on the KlumCast APIs used by that module's own source.
+
 ## The compile-time model
 
 A **validated annotation** is a consumer-defined annotation whose uses KlumCast validates. A **validation annotation** is
@@ -40,7 +56,7 @@ KlumCast 0.4 requires Java 17 and supports Groovy 3, 4, and 5.
 
 | Artifact or dependency | Gradle scope | Maven scope | Add it when |
 |---|---|---|---|
-| `com.blackbuild.klum.cast:klum-cast-annotations` | `implementation` | default (`compile`) | Source declares or uses KlumCast metadata or built-in validation annotations. It has no Groovy dependency. |
+| `com.blackbuild.klum.cast:klum-cast-annotations` | `implementation` or `api` | default (`compile`) | Source declares or uses KlumCast metadata or built-in validation annotations. Use `api` when that metadata is exposed to downstream modules. It has no Groovy dependency. |
 | `com.blackbuild.klum.cast:klum-cast-spi` | `compileOnly` | `provided` | Source implements a check/filter or uses typed `@CheckBinding`. |
 | Matching Groovy compiler | `compileOnly` | `provided` | A check/filter implementation compiles against the AST types exposed by the SPI. |
 | `com.blackbuild.klum.cast:klum-cast-compile` | `compileOnly` | `provided` | A Groovy compilation should run validation. This dependency is the activation switch. |

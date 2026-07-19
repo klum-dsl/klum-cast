@@ -7,18 +7,21 @@ This journey combines two built-in validations with the writer journey's custom 
 
 ## Prerequisites and dependencies
 
-An aggregator that only declares annotations normally needs:
+The [example project-module overview](README.md#example-project-modules) uses the dependency chain `:custom-checks` →
+`:domain-annotations` → `:consumer`. This page configures `:domain-annotations`, which owns both `@SetterLike` and
+`@DomainSetter`:
 
 ```groovy
 dependencies {
-    implementation "com.blackbuild.klum.cast:klum-cast-annotations:$klumCastVersion"
-    implementation project(":custom-check-metadata") // only when custom validation annotations live there
+    api "com.blackbuild.klum.cast:klum-cast-annotations:$klumCastVersion"
+    api project(":custom-checks")
 }
 ```
 
-Use Maven's default compile scope for both. Add `klum-cast-spi` only if this source also uses typed bindings or implements
-checks/filters. Add `klum-cast-compile` only to Groovy compilations that should run validation. See the
-[shared dependency table](README.md#dependencies-by-role).
+The `api` edges make the runtime-retained annotations in `@SetterLike` and `@DomainSetter` available when `:consumer`
+compiles against them. Use Maven's default transitive compile scope for both. Add `klum-cast-spi` only if this source also
+uses typed bindings or implements checks/filters. Add `klum-cast-compile` only to Groovy compilations that should run
+validation. See the [shared dependency table](README.md#dependencies-by-role).
 
 ## Compose the setter validation
 
