@@ -36,11 +36,11 @@ class AlsoNeedsTest extends AstSpec {
 @Retention(RetentionPolicy.RUNTIME)
 @KlumCastValidated
 @interface MyAnnotation {
-    @AlsoNeeds(['aux1', 'aux2']) String main1()
-    @AlsoNeeds(['aux2', 'aux3']) String main2()
-    String aux1()
-    String aux2()
-    String aux3()
+    @AlsoNeeds(['aux1', 'aux2']) String main1() default ''
+    @AlsoNeeds(['aux2', 'aux3']) String main2() default ''
+    String aux1() default ''
+    String aux2() default ''
+    String aux3() default ''
 }'''
     }
 

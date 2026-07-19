@@ -1,34 +1,39 @@
-buildscript {
-    repositories {
-        mavenCentral()
-        maven {
-            url "https://plugins.gradle.org/m2/"
-        }
-    }
-}
 plugins {
-    id 'nebula.release' version '15.2.0'
+    id 'nebula.release' version '19.0.6'
     id 'base'
 
-    id 'nebula.maven-publish' version '17.3.2' apply false
-    id 'nebula.javadoc-jar' version '17.3.2' apply false
-    id 'nebula.source-jar' version '17.3.2' apply false
-    id 'nebula.contacts' version '5.1.0' apply false
-    //id 'nebula.info' version '9.1.2' apply false
-    id "com.github.hierynomus.license" version "0.15.0"
-    id 'org.ajoberstar.git-publish' version '3.0.1'
-    id 'org.ajoberstar.grgit' version '4.1.1'
-    id "com.github.ben-manes.versions" version "0.36.0"
-    id "io.github.gradle-nexus.publish-plugin" version "1.1.0"
-}
-ext {
-    groovyVersion = project.findProperty("groovyVersion") ?: '2.4.21'
-    groovyGroup = groovyVersion.startsWith("4.") ? 'org.apache.groovy' : 'org.codehaus.groovy'
-    // groovyVersion = '4.0.12'
+    id "com.github.hierynomus.license" version "0.16.1"
+    id "com.github.ben-manes.versions" version "0.51.0"
+    id "io.github.gradle-nexus.publish-plugin" version "1.3.0"
 }
 
-group 'com.blackbuild.klum.cast'
-description 'Checks for automatic validation of annotation placement during AST transformations.'
+configurations {
+    mavenDistribution {
+        canBeConsumed = false
+        canBeResolved = true
+    }
+}
+
+repositories {
+    mavenCentral()
+}
+
+ext {
+    groovyVersions = [3: '3.0.25', 4: '4.0.32', 5: '5.0.6']
+    spockVersions = [3: '2.4-groovy-3.0', 4: '2.4-groovy-4.0', 5: '2.4-groovy-5.0']
+    groovyDependencies = [
+            3: "org.codehaus.groovy:groovy:${groovyVersions[3]}",
+            4: "org.apache.groovy:groovy:${groovyVersions[4]}",
+            5: "org.apache.groovy:groovy:${groovyVersions[5]}"
+    ]
+}
+
+group = 'com.blackbuild.klum.cast'
+description = 'Checks for automatic validation of annotation placement during AST transformations.'
+
+dependencies {
+    mavenDistribution 'org.apache.maven:apache-maven:3.9.12:bin@tar.gz'
+}
 
 nexusPublishing {
     repositories {
@@ -40,22 +45,27 @@ nexusPublishing {
 }
 
 subprojects {
-
-    apply plugin: 'nebula.maven-publish'
-    apply plugin: 'nebula.javadoc-jar'
-    apply plugin: 'nebula.source-jar'
-    apply plugin: 'nebula.release'
-    apply plugin: 'nebula.contacts'
-    // apply plugin: 'nebula.info'
+    apply plugin: 'java-library'
     apply plugin: 'groovy'
     apply plugin: 'jacoco'
+    apply plugin: 'maven-publish'
     apply plugin: 'signing'
+    apply plugin: 'nebula.release'
     apply plugin: 'com.github.hierynomus.license'
 
-    group 'com.blackbuild.klum.cast'
+    group = 'com.blackbuild.klum.cast'
 
-    sourceCompatibility = JavaVersion.VERSION_11
-    targetCompatibility = JavaVersion.VERSION_11
+    java {
+        toolchain {
+            languageVersion = JavaLanguageVersion.of(17)
+        }
+        withJavadocJar()
+        withSourcesJar()
+    }
+
+    tasks.withType(JavaCompile).configureEach {
+        options.release = 17
+    }
 
     tasks.withType(Jar).configureEach {
         def moduleRole = project.name == 'klum-cast-compile' ? 'compiler' : project.name - 'klum-cast-'
@@ -67,53 +77,53 @@ subprojects {
     }
 
     jacoco {
-        toolVersion = "0.8.2"
+        toolVersion = "0.8.13"
     }
 
     dependencies {
         compileOnly "org.jetbrains:annotations:16.0.2"
-        compileOnly "$rootProject.ext.groovyGroup:groovy-all:$rootProject.ext.groovyVersion"
 
-        //compileOnly "com.intellij:openapi:7.0.3"
-
-        if (rootProject.ext.groovyVersion.startsWith("2.")) {
-            testImplementation "org.codehaus.groovy:groovy-all:$rootProject.ext.groovyVersion"
-            testImplementation("org.spockframework:spock-core:1.3-groovy-2.4")
-        } else if (rootProject.ext.groovyVersion.startsWith("3.")) {
-            testImplementation "org.codehaus.groovy:groovy-all:$rootProject.ext.groovyVersion"
-            testImplementation("org.spockframework:spock-core:2.3-groovy-3.0")
-            testImplementation("org.spockframework:spock-junit4:2.3-groovy-3.0")
-        } else if (rootProject.ext.groovyVersion.startsWith("4.")) {
-            testImplementation "org.apache.groovy:groovy-all:$rootProject.ext.groovyVersion"
-            testImplementation("org.spockframework:spock-core:2.3-groovy-4.0")
-            testImplementation("org.spockframework:spock-junit4:2.3-groovy-4.0")
-        } else {
-            throw new IllegalStateException("Unsupported Groovy version ${rootProject.ext.groovyVersion}")
-        }
+        testImplementation rootProject.ext.groovyDependencies[3]
+        testImplementation "org.spockframework:spock-core:${rootProject.ext.spockVersions[3]}"
+        testImplementation "org.spockframework:spock-junit4:${rootProject.ext.spockVersions[3]}"
         testImplementation "org.jetbrains:annotations:16.0.2"
 
-        testRuntimeOnly "net.bytebuddy:byte-buddy:1.9.3"
-        testRuntimeOnly "org.objenesis:objenesis:2.6"
+        testRuntimeOnly "net.bytebuddy:byte-buddy:1.15.11"
+        testRuntimeOnly "org.objenesis:objenesis:3.4"
+        testRuntimeOnly "org.junit.platform:junit-platform-launcher"
     }
 
-    contacts {
-        'stephan@blackbuild.com' {
-            moniker 'Stephan Pauxberger'
-            github 'pauxus'
+    tasks.withType(Test).configureEach {
+        useJUnitPlatform()
+        javaLauncher = javaToolchains.launcherFor {
+            languageVersion = JavaLanguageVersion.of(17)
         }
     }
 
     publishing {
         publications {
-            nebula(MavenPublication) {
-                suppressPomMetadataWarningsFor('testFixturesApiElements')
-                suppressPomMetadataWarningsFor('testFixturesRuntimeElements')
+            mavenJava(MavenPublication) {
+                from components.java
+            }
+            consumerFixture(MavenPublication) {
+                from components.java
+            }
+            withType(MavenPublication).configureEach {
                 pom {
+                    name = project.name
+                    description = project.description
                     url = "https://github.com/klum-dsl/klum-cast"
                     licenses {
                         license {
                             name = 'The MIT License (MIT)'
                             url = 'http://opensource.org/licenses/MIT'
+                        }
+                    }
+                    developers {
+                        developer {
+                            id = 'pauxus'
+                            name = 'Stephan Pauxberger'
+                            email = 'stephan@blackbuild.com'
                         }
                     }
                     scm {
@@ -124,11 +134,37 @@ subprojects {
                 }
             }
         }
+        repositories {
+            maven {
+                name = 'consumerTest'
+                url = rootProject.layout.buildDirectory.dir('consumer-test-repository')
+            }
+        }
     }
 
     signing {
-        required { gradle.taskGraph.hasTask("publish") || gradle.taskGraph.hasTask("publishToMavenLocal") }
-        sign publishing.publications.nebula
+        required {
+            gradle.taskGraph.allTasks.any {
+                it.name in ['publishToSonatype', 'closeAndReleaseSonatypeStagingRepository']
+            }
+        }
+        sign publishing.publications.mavenJava
+    }
+
+    tasks.withType(Sign).configureEach {
+        dependsOn rootProject.tasks.named('check')
+        onlyIf {
+            gradle.taskGraph.allTasks.any {
+                it.name in ['publishToSonatype', 'closeAndReleaseSonatypeStagingRepository']
+            }
+        }
+    }
+
+    tasks.withType(PublishToMavenRepository).configureEach {
+        if (name == 'publishConsumerFixturePublicationToSonatypeRepository')
+            enabled = false
+        if (!name.endsWith('ToConsumerTestRepository'))
+            dependsOn rootProject.tasks.named('check')
     }
 
     license {
@@ -139,44 +175,140 @@ subprojects {
         exclude("mockup/**")
         strictCheck(true)
     }
+}
 
-    test {
-        if (!rootProject.ext.groovyVersion.startsWith("2."))
-            useJUnitPlatform()
+def publishedConsumerFixture = layout.projectDirectory.dir('docs/implementation/fixtures/published-consumer')
+def consumerRepository = layout.buildDirectory.dir('consumer-test-repository')
+def consumerPublishTasks = subprojects.collect {
+    it.tasks.named('publishConsumerFixturePublicationToConsumerTestRepository')
+}
+def consumerWorkspaces = [3, 4, 5].collectEntries { groovyGeneration ->
+    def workspace = layout.buildDirectory.dir("consumer-workspaces/groovy${groovyGeneration}")
+    def prepareTask = tasks.register("prepareConsumerWorkspaceGroovy${groovyGeneration}", Sync) {
+        from publishedConsumerFixture.dir('gradle')
+        from(publishedConsumerFixture.dir('src')) {
+            into 'src'
+        }
+        from(publishedConsumerFixture.dir('maven')) {
+            into 'maven'
+        }
+        into workspace
+    }
+    [(groovyGeneration): [directory: workspace, task: prepareTask]]
+}
+
+tasks.register('verifyPublishedMetadata') {
+    group = 'verification'
+    description = 'Verifies the published annotation, SPI, and compiler POM dependency contracts.'
+    dependsOn consumerPublishTasks
+
+    doLast {
+        def publicationVersion = project.version.toString()
+        def pomFor = { String artifact ->
+            consumerRepository.get().file("com/blackbuild/klum/cast/${artifact}/${publicationVersion}/${artifact}-${publicationVersion}.pom")
+                    .asFile
+        }
+        def dependenciesFor = { String artifact ->
+            new XmlSlurper().parse(pomFor(artifact)).dependencies.dependency.collect {
+                [group: it.groupId.text(), artifact: it.artifactId.text(), scope: it.scope.text()]
+            }
+        }
+
+        ['klum-cast-annotations', 'klum-cast-spi'].each { artifact ->
+            def groovyDependencies = dependenciesFor(artifact).findAll {
+                it.group in ['org.codehaus.groovy', 'org.apache.groovy']
+            }
+            if (!groovyDependencies.isEmpty())
+                throw new GradleException("${artifact} publishes a Groovy selector: ${groovyDependencies}")
+        }
+
+        def compilerDependencies = dependenciesFor('klum-cast-compile')
+        ['klum-cast-annotations', 'klum-cast-spi'].each { requiredArtifact ->
+            if (!compilerDependencies.any { it.artifact == requiredArtifact && it.scope == 'compile' })
+                throw new GradleException("klum-cast-compile does not publish ${requiredArtifact} as a compile dependency")
+        }
     }
 }
 
-/*
-gitPublish {
-    repoUri = 'git@github.com:klum-dsl/klum-cast.wiki.git'
-    branch = 'master'
+[3, 4, 5].each { groovyGeneration ->
+    tasks.register("verifyGradleConsumerGroovy${groovyGeneration}", GradleBuild) {
+        group = 'verification'
+        description = "Builds the published Gradle consumer fixture with Groovy ${groovyGeneration}."
+        dependsOn consumerPublishTasks
+        dependsOn consumerWorkspaces[groovyGeneration].task
+        dir = consumerWorkspaces[groovyGeneration].directory.get().asFile
+        tasks = ['clean', 'verifyFixture']
+        startParameter.projectProperties = [
+                klumCastVersion  : project.version.toString(),
+                fixtureRepository: consumerRepository.get().asFile.absolutePath,
+                groovyGeneration : groovyGeneration.toString(),
+                groovyGroup      : groovyGeneration == 3 ? 'org.codehaus.groovy' : 'org.apache.groovy',
+                groovyVersion    : rootProject.ext.groovyVersions[groovyGeneration].toString()
+        ]
+    }
+}
 
-    contents {
-        from 'wiki'
-        filesMatching('*.md') {
-            filter(ReplaceTokens, tokens: [version: version.toString()])
+def installMaven = tasks.register('installMaven', Sync) {
+    group = 'build setup'
+    description = 'Installs the pinned Maven distribution used by published-consumer verification.'
+    from tarTree(resources.gzip(configurations.mavenDistribution.singleFile))
+    into layout.buildDirectory.dir('maven')
+}
+
+[3, 4, 5].each { groovyGeneration ->
+    tasks.register("verifyMavenConsumerGroovy${groovyGeneration}", Exec) {
+        group = 'verification'
+        description = "Builds the published Maven consumer fixture with Groovy ${groovyGeneration}."
+        dependsOn consumerPublishTasks
+        dependsOn installMaven
+        dependsOn consumerWorkspaces[groovyGeneration].task
+        workingDir consumerWorkspaces[groovyGeneration].directory.get().dir('maven').asFile
+
+        def marker = layout.buildDirectory.file("consumer-markers/maven-groovy${groovyGeneration}.txt")
+        inputs.dir(publishedConsumerFixture)
+        inputs.dir(consumerRepository)
+        outputs.file(marker)
+
+        doFirst {
+            marker.get().asFile.parentFile.mkdirs()
+            marker.get().asFile.delete()
+            def existingMavenOptions = System.getenv('MAVEN_OPTS') ?: ''
+            environment 'MAVEN_OPTS', "${existingMavenOptions} -Dklumcast.fixture.marker=${marker.get().asFile.absolutePath}".trim()
+            commandLine installMaven.get().destinationDir.toPath().resolve('apache-maven-3.9.12/bin/mvn').toFile(),
+                    '--batch-mode', '--no-transfer-progress',
+                    "-DklumCastVersion=${project.version}",
+                    "-DfixtureRepository=${consumerRepository.get().asFile.toURI()}",
+                    "-DgroovyGroup=${groovyGeneration == 3 ? 'org.codehaus.groovy' : 'org.apache.groovy'}",
+                    "-DgroovyVersion=${rootProject.ext.groovyVersions[groovyGeneration]}",
+                    'clean', 'verify'
         }
-        from('.') {
-            include("CHANGES.md")
-            rename('CHANGES.md', "Changelog.md")
+
+        doLast {
+            if (!marker.get().asFile.text.contains('fixture.FixtureCheck'))
+                throw new GradleException("Maven Groovy ${groovyGeneration} consumer did not activate KlumCast")
         }
     }
-
-    repoDir = file("$buildDir/gitPublish")
-
-    commitMessage = "updated wiki for $version"
 }
-tasks.candidate.finalizedBy tasks.gitPublishPush
-tasks.final.finalizedBy tasks.gitPublishPush
-*/
+
+tasks.register('verifyPublishedConsumers') {
+    group = 'verification'
+    description = 'Runs published Gradle and Maven consumers for Groovy 3, 4, and 5.'
+    dependsOn tasks.named('verifyPublishedMetadata')
+    dependsOn([3, 4, 5].collect { tasks.named("verifyGradleConsumerGroovy${it}") })
+    dependsOn([3, 4, 5].collect { tasks.named("verifyMavenConsumerGroovy${it}") })
+}
+
+tasks.named('check') {
+    dependsOn subprojects.collect { it.tasks.named('check') }
+    dependsOn tasks.named('verifyPublishedConsumers')
+}
 
 releaseCheck.doLast {
     if (!gradle.includedBuilds.isEmpty())
         throw new GradleException("Releasing is not allowed with composite builds. Please release $gradle.includedBuilds separately")
 
-    if (JavaVersion.current() != JavaVersion.VERSION_11)
-        throw new GradleException("Releasing must be done with JDK 11")
-
-    if (!project.ext.groovyVersion.startsWith("2."))
-        throw new GradleException("Releasing must be done with Groovy 2.4")
+    if (JavaVersion.current() != JavaVersion.VERSION_17)
+        throw new GradleException("Releasing must be done with JDK 17")
 }
+
+releaseCheck.dependsOn tasks.named('check')

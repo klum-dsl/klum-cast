@@ -1,4 +1,5 @@
 apply plugin: 'java-library'
+apply plugin: 'jvm-test-suite'
 
 description "compileOnly part of KlumCAST"
 
@@ -6,48 +7,129 @@ dependencies {
     // all dependencies are compile time dependencies (for AST "runtime" is compile time of a client project")
     api project(':klum-cast-annotations')
     api project(':klum-cast-spi')
-
-    if (rootProject.ext.groovyVersion.startsWith("2.")) {
-        testImplementation("org.spockframework:spock-core:1.3-groovy-2.4")
-    } else {
-        testImplementation("org.spockframework:spock-core:2.1-groovy-3.0")
-        testImplementation("org.spockframework:spock-junit4:2.1-groovy-3.0")
-    }
+    compileOnly rootProject.ext.groovyDependencies[3]
     testImplementation "org.jetbrains:annotations:16.0.2"
 }
 
-tasks.register('verifyModuleFeasibility') {
-    group = 'verification'
-    description = 'Inspects published artifacts and exercises the module-path feasibility consumer fixture.'
-    dependsOn ':klum-cast-annotations:jar', ':klum-cast-spi:jar', ':klum-cast-compile:jar'
+testing {
+    suites {
+        [4, 5].each { groovyGeneration ->
+            register("groovy${groovyGeneration}Tests", JvmTestSuite) {
+                useSpock(rootProject.ext.spockVersions[groovyGeneration])
 
-    def fixture = rootProject.file('docs/implementation/prototypes/module-path')
-    inputs.dir(fixture)
-    inputs.files(
-            project(':klum-cast-annotations').tasks.named('jar'),
-            project(':klum-cast-spi').tasks.named('jar'),
-            tasks.named('jar')
-    )
+                sources {
+                    groovy {
+                        setSrcDirs(['src/test/groovy'])
+                    }
+                    java {
+                        setSrcDirs(['src/test/java'])
+                    }
+                }
+
+                dependencies {
+                    implementation project()
+                    implementation rootProject.ext.groovyDependencies[groovyGeneration]
+                    implementation "org.spockframework:spock-junit4:${rootProject.ext.spockVersions[groovyGeneration]}"
+                    implementation "org.jetbrains:annotations:16.0.2"
+                    runtimeOnly "net.bytebuddy:byte-buddy:1.15.11"
+                    runtimeOnly "org.objenesis:objenesis:3.4"
+                    runtimeOnly "org.junit.platform:junit-platform-launcher"
+                }
+
+                targets.configureEach {
+                    testTask.configure {
+                        shouldRunAfter(tasks.named('test'))
+                    }
+                }
+            }
+        }
+    }
+}
+
+def registerModuleFeasibility = { String taskName, int groovyGeneration, String runtimeClasspath ->
+    tasks.register(taskName) {
+        group = 'verification'
+        description = "Inspects published artifacts and exercises the Groovy ${groovyGeneration} module-path fixture."
+        dependsOn ':klum-cast-annotations:jar', ':klum-cast-spi:jar', ':klum-cast-compile:jar'
+
+        def fixture = rootProject.file('docs/implementation/prototypes/module-path')
+        inputs.dir(fixture)
+        inputs.files(
+                project(':klum-cast-annotations').tasks.named('jar'),
+                project(':klum-cast-spi').tasks.named('jar'),
+                tasks.named('jar')
+        )
+
+        doLast {
+            def groovyVersion = rootProject.ext.groovyVersions[groovyGeneration]
+            def groovyJar = configurations.named(runtimeClasspath).get().files.find {
+                it.name == "groovy-${groovyVersion}.jar"
+            }
+            if (groovyJar == null)
+                throw new GradleException("Could not locate Groovy ${groovyVersion} on ${runtimeClasspath}")
+
+            exec {
+                commandLine 'bash', new File(fixture, 'run.sh').absolutePath
+                environment 'ANNOTATIONS_JAR', project(':klum-cast-annotations').tasks.named('jar').get().archiveFile.get().asFile
+                environment 'SPI_JAR', project(':klum-cast-spi').tasks.named('jar').get().archiveFile.get().asFile
+                environment 'COMPILER_JAR', tasks.named('jar').get().archiveFile.get().asFile
+                environment 'GROOVY_JAR', groovyJar
+                environment 'GROOVY_VERSION', groovyVersion
+                environment 'FIXTURE_BUILD_DIR', new File(buildDir, "module-feasibility-groovy${groovyGeneration}")
+            }
+        }
+    }
+}
+
+registerModuleFeasibility('verifyModuleFeasibility', 3, 'testRuntimeClasspath')
+registerModuleFeasibility('verifyGroovy4ModuleFeasibility', 4, 'groovy4TestsRuntimeClasspath')
+registerModuleFeasibility('verifyGroovy5ModuleFeasibility', 5, 'groovy5TestsRuntimeClasspath')
+
+tasks.register('verifyTestLaneIsolation') {
+    group = 'verification'
+    description = 'Verifies every Groovy test lane has matching dependencies and disjoint compiled test output.'
+    dependsOn tasks.named('testClasses')
+    dependsOn tasks.named('groovy4TestsClasses')
+    dependsOn tasks.named('groovy5TestsClasses')
 
     doLast {
-        def groovyJar = configurations.testRuntimeClasspath.files.find {
-            it.name == "groovy-${rootProject.ext.groovyVersion}.jar"
-        }
-        if (groovyJar == null)
-            throw new GradleException("Could not locate Groovy ${rootProject.ext.groovyVersion} on the test runtime classpath")
+        def lanes = [
+                3: [sourceSet: sourceSets.test, configuration: configurations.testRuntimeClasspath,
+                    compileTask: tasks.named('compileTestGroovy')],
+                4: [sourceSet: sourceSets.groovy4Tests, configuration: configurations.groovy4TestsRuntimeClasspath,
+                    compileTask: tasks.named('compileGroovy4TestsGroovy')],
+                5: [sourceSet: sourceSets.groovy5Tests, configuration: configurations.groovy5TestsRuntimeClasspath,
+                    compileTask: tasks.named('compileGroovy5TestsGroovy')]
+        ]
 
-        exec {
-            commandLine 'bash', new File(fixture, 'run.sh').absolutePath
-            environment 'ANNOTATIONS_JAR', project(':klum-cast-annotations').tasks.named('jar').get().archiveFile.get().asFile
-            environment 'SPI_JAR', project(':klum-cast-spi').tasks.named('jar').get().archiveFile.get().asFile
-            environment 'COMPILER_JAR', tasks.named('jar').get().archiveFile.get().asFile
-            environment 'GROOVY_JAR', groovyJar
-            environment 'GROOVY_VERSION', rootProject.ext.groovyVersion
-            environment 'FIXTURE_BUILD_DIR', new File(buildDir, 'module-feasibility')
+        lanes.each { generation, lane ->
+            def components = lane.configuration.incoming.resolutionResult.allComponents*.id.findAll {
+                it instanceof org.gradle.api.artifacts.component.ModuleComponentIdentifier
+            }
+            def groovyComponents = components.findAll { it.group in ['org.codehaus.groovy', 'org.apache.groovy'] }
+            def expectedGroup = generation == 3 ? 'org.codehaus.groovy' : 'org.apache.groovy'
+            if (groovyComponents.any { it.group != expectedGroup || it.version != rootProject.ext.groovyVersions[generation] })
+                throw new GradleException("Groovy ${generation} lane contains mismatched Groovy modules: ${groovyComponents}")
+
+            def spockComponents = components.findAll { it.group == 'org.spockframework' }
+            if (spockComponents.any { it.version != rootProject.ext.spockVersions[generation] })
+                throw new GradleException("Groovy ${generation} lane contains mismatched Spock modules: ${spockComponents}")
+
+            def forbiddenOutput = lanes.findAll { otherGeneration, ignored -> otherGeneration != generation }
+                    .values()
+                    .collectMany { it.sourceSet.output.classesDirs.files }
+            def leakedOutput = lane.compileTask.get().classpath.files.intersect(forbiddenOutput)
+            if (!leakedOutput.isEmpty())
+                throw new GradleException("Groovy ${generation} compile classpath contains another lane's output: ${leakedOutput}")
         }
     }
 }
 
 tasks.named('check') {
+    dependsOn testing.suites.groovy4Tests
+    dependsOn testing.suites.groovy5Tests
     dependsOn tasks.named('verifyModuleFeasibility')
+    dependsOn tasks.named('verifyGroovy4ModuleFeasibility')
+    dependsOn tasks.named('verifyGroovy5ModuleFeasibility')
+    dependsOn tasks.named('verifyTestLaneIsolation')
 }

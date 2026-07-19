@@ -1,0 +1,70 @@
+plugins {
+    id 'java'
+}
+
+def klumCastVersion = providers.gradleProperty('klumCastVersion').get()
+def fixtureRepository = providers.gradleProperty('fixtureRepository').get()
+def groovyGroup = providers.gradleProperty('groovyGroup').get()
+def groovyVersion = providers.gradleProperty('groovyVersion').get()
+def activationMarker = layout.buildDirectory.file('klumcast-activation.txt')
+
+repositories {
+    maven {
+        url = uri(fixtureRepository)
+    }
+    mavenCentral()
+}
+
+configurations {
+    groovyCompiler
+}
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(17)
+    }
+}
+
+sourceSets {
+    main {
+        java.srcDir('src/main/java')
+    }
+}
+
+dependencies {
+    implementation "com.blackbuild.klum.cast:klum-cast-annotations:${klumCastVersion}"
+    compileOnly "com.blackbuild.klum.cast:klum-cast-spi:${klumCastVersion}"
+    compileOnly "com.blackbuild.klum.cast:klum-cast-compile:${klumCastVersion}"
+    compileOnly "${groovyGroup}:groovy:${groovyVersion}"
+
+    groovyCompiler "com.blackbuild.klum.cast:klum-cast-annotations:${klumCastVersion}"
+    groovyCompiler "com.blackbuild.klum.cast:klum-cast-spi:${klumCastVersion}"
+    groovyCompiler "com.blackbuild.klum.cast:klum-cast-compile:${klumCastVersion}"
+    groovyCompiler "${groovyGroup}:groovy:${groovyVersion}"
+}
+
+def compileConsumerGroovy = tasks.register('compileConsumerGroovy', JavaExec) {
+    dependsOn tasks.named('compileJava')
+    classpath = configurations.groovyCompiler + files(tasks.named('compileJava').map { it.destinationDirectory })
+    mainClass = 'org.codehaus.groovy.tools.FileSystemCompiler'
+    javaLauncher = javaToolchains.launcherFor {
+        languageVersion = JavaLanguageVersion.of(17)
+    }
+    systemProperty 'klumcast.fixture.marker', activationMarker.get().asFile.absolutePath
+    args '-d', layout.buildDirectory.dir('classes/groovy/main').get().asFile,
+            file('src/main/groovy/fixture/ConsumerTarget.groovy')
+    inputs.file(file('src/main/groovy/fixture/ConsumerTarget.groovy'))
+    outputs.dir(layout.buildDirectory.dir('classes/groovy/main'))
+    outputs.file(activationMarker)
+}
+
+tasks.register('verifyFixture') {
+    dependsOn compileConsumerGroovy
+    inputs.files(configurations.groovyCompiler)
+    inputs.file(activationMarker)
+
+    doLast {
+        if (!activationMarker.get().asFile.text.contains('fixture.FixtureCheck'))
+            throw new GradleException('KlumCast compiler activation marker was not written')
+    }
+}
