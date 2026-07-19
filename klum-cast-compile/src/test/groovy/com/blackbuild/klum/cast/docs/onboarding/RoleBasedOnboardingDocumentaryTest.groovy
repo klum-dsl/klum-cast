@@ -34,6 +34,70 @@ import spock.lang.Tag
 @See('https://github.com/klum-dsl/klum-cast/blob/main/docs/user/check-user.md#2-use-it-in-groovy-source')
 class RoleBasedOnboardingDocumentaryTest extends AstSpec {
 
+    def "a Groovy composition can nest a non-reusable OR branch"() {
+        given:
+        loader.parseClass '''
+package fixture
+
+import com.blackbuild.klum.cast.KlumCastValidated
+import com.blackbuild.klum.cast.checks.NeedsReturnType
+import com.blackbuild.klum.cast.checks.NumberOfParameters
+import com.blackbuild.klum.cast.checks.OneCheckMustMatch
+
+import java.lang.annotation.ElementType
+import java.lang.annotation.Retention
+import java.lang.annotation.RetentionPolicy
+import java.lang.annotation.Target
+
+@Target(ElementType.ANNOTATION_TYPE)
+@Retention(RetentionPolicy.RUNTIME)
+@KlumCastValidated
+@OneCheckMustMatch(message = 'Use one parameter or return String')
+@GroovyMethodShape.OneParameter
+@NeedsReturnType(String)
+@interface GroovyMethodShape {
+    @Target(ElementType.ANNOTATION_TYPE)
+    @Retention(RetentionPolicy.RUNTIME)
+    @KlumCastValidated
+    @NumberOfParameters(1)
+    @interface OneParameter {}
+}
+
+@Target(ElementType.METHOD)
+@Retention(RetentionPolicy.RUNTIME)
+@KlumCastValidated
+@GroovyMethodShape
+@interface CheckedMethod {}
+''', 'GroovyNestedComposition.groovy'
+
+        when:
+        loader.parseClass '''
+package fixture
+
+class ValidNestedCompositionUse {
+    @CheckedMethod
+    void acceptsOneArgument(Object value) {}
+}
+''', 'ValidNestedCompositionUse.groovy'
+
+        then:
+        noExceptionThrown()
+
+        when:
+        loader.parseClass '''
+package fixture
+
+class InvalidNestedCompositionUse {
+    @CheckedMethod
+    void acceptsNoArguments() {}
+}
+''', 'InvalidNestedCompositionUse.groovy'
+
+        then:
+        def failure = thrown(MultipleCompilationErrorsException)
+        failure.message.contains('[klum-cast.composition.or.no-match] Use one parameter or return String')
+    }
+
     def "a valid setter-shaped use compiles"() {
         when:
         loader.parseClass '''

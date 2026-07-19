@@ -68,11 +68,13 @@ There is no public AND, XOR, or conditional composition syntax in 0.4. Do not in
 
 ## Java and Groovy declaration shape
 
-Validation annotations and checks may be authored in Java or Groovy. A Java-authored composition may nest a branch
-annotation type inside its parent when that branch has no independent meaning; the executable
+Validation annotations and checks may be authored in Java or Groovy. In either language, a composition may nest a branch
+annotation type inside its parent when that branch has no independent meaning. The executable
 [`NestedOrFixture`](../../klum-cast-compile/src/test/java/com/blackbuild/klum/cast/checks/NestedOrFixture.java) demonstrates
-that shape. Groovy-authored branch annotation declarations must remain top-level. Use a top-level annotation in either
-language whenever the branch is reused or is independently meaningful.
+the Java shape, while
+[`RoleBasedOnboardingDocumentaryTest`](../../klum-cast-compile/src/test/groovy/com/blackbuild/klum/cast/docs/onboarding/RoleBasedOnboardingDocumentaryTest.groovy)
+compiles a Groovy-authored nested branch and verifies both matching and all-failing OR outcomes. Use a top-level annotation
+in either language whenever the branch is reused or is independently meaningful.
 
 Nesting is only declaration organization: inner branches are not annotations that check users apply directly, and it
 does not change OR outcomes.
