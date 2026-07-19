@@ -17,8 +17,9 @@ durable trade-offs under `docs/adr/`. See `docs/agents/domain.md`.
 
 ## Coding and testing
 
-Follow `docs/agents/coding-style.md`. The current build targets JDK 11 and verifies Groovy 2.4, 3, and 4 using the commands
-and lane policy in `docs/agents/testing.md`. Issue #455 owns any cross-repository multi-Groovy redesign.
+Follow `docs/agents/coding-style.md`. The current build targets Java 17 and verifies Groovy 3, 4, and 5 using the commands
+and isolated-lane policy in `docs/agents/testing.md`. The accepted cross-repository contract is recorded in KlumAST issue
+#455 and ADR 0011 there; do not reintroduce whole-build Groovy version selection.
 
 ## License plugin
 

@@ -11,9 +11,46 @@ KlumCast 0.4 separates declarative metadata, the custom-check SPI, and compiler 
   compiler dependency.
 - `com.blackbuild.klum.cast:klum-cast-spi` contains `Check`, `CheckContext`, `Diagnostic`,
   `ApplicabilityFilter`, and the typed `@CheckBinding` annotation. Custom-check authors add this dependency explicitly;
-  it deliberately exposes Groovy compiler AST types and therefore publishes Groovy as an API dependency.
+  it deliberately exposes Groovy compiler AST types but does not publish a transitive Groovy-version selector.
 - `com.blackbuild.klum.cast:klum-cast-compile` activates the service-loaded semantic-analysis transformation and
   supplies both sibling artifacts transitively.
+
+KlumCast 0.4 requires Java 17 and supports Groovy 3, 4, and 5. The production artifacts are compiled once against Groovy
+3 and are verified as one artifact set in all three generations. Groovy 2.4 and Java 11 remain supported only on the 0.3
+line. Projects that implement custom checks must declare the Groovy compiler matching their own lane in addition to
+`klum-cast-spi`:
+
+| Groovy | Compiler coordinate | Automatic module name |
+|---:|---|---|
+| 3 | `org.codehaus.groovy:groovy` | `org.codehaus.groovy` |
+| 4 | `org.apache.groovy:groovy` | `org.apache.groovy` |
+| 5 | `org.apache.groovy:groovy` | `org.apache.groovy` |
+
+```groovy
+dependencies {
+    implementation "com.blackbuild.klum.cast:klum-cast-annotations:$klumCastVersion"
+    compileOnly "com.blackbuild.klum.cast:klum-cast-spi:$klumCastVersion"
+    compileOnly "com.blackbuild.klum.cast:klum-cast-compile:$klumCastVersion"
+    compileOnly "org.apache.groovy:groovy:$groovyVersion" // Groovy 4 or 5; use org.codehaus.groovy for Groovy 3
+}
+```
+
+The Maven equivalent uses `provided` scope for SPI, compiler activation, and the selected Groovy compiler:
+
+```xml
+<dependency>
+  <groupId>com.blackbuild.klum.cast</groupId>
+  <artifactId>klum-cast-spi</artifactId>
+  <version>${klumCastVersion}</version>
+  <scope>provided</scope>
+</dependency>
+<dependency>
+  <groupId>org.codehaus.groovy</groupId><!-- org.apache.groovy for Groovy 4 or 5 -->
+  <artifactId>groovy</artifactId>
+  <version>${groovyVersion}</version>
+  <scope>provided</scope>
+</dependency>
+```
 
 New checks implement `Check` and return zero or more `Diagnostic` values from `check(CheckContext)`. A context is
 immutable and provides the validated annotation, target, applicable control annotation, member name, binding metadata,
@@ -88,9 +125,8 @@ public @interface OuterOr {
 }
 ```
 
-Groovy 2.4 cannot parse nested `@interface` declarations, so Groovy-authored compositions must keep nested branch types
-at top level. Use a top-level annotation type in any language when a branch is reused by another composition or as an
-independently named validation annotation.
+Use a top-level annotation type when a branch is reused by another composition or as an independently named validation
+annotation.
 
 The engine evaluates branches eagerly in ascending annotation-type-name order. A filtered branch is not a match; OR
 passes when any applicable branch passes, fails when all applicable branches fail, and is not applicable when it has no
@@ -124,10 +160,10 @@ The compiler artifact continues to discover its global Groovy AST transformation
 is on the compilation classpath. Its packages are intentionally separate from annotations and SPI; consumers must not
 rely on compiler implementation packages as API.
 
-KlumCast does not currently publish explicit `module-info.java` descriptors. The repository-owned JDK 11 fixture proves
-the automatic-module and classpath contracts in Groovy 2.4, 3, and 4, but Groovy 2.4 itself is not usable on the Java
-module path. The fixture therefore treats explicit descriptors as infeasible for the current support matrix without
-workarounds. This is not a support-matrix change; see issue #13 and KlumAST #455 for that separate decision.
+KlumCast does not currently publish explicit `module-info.java` descriptors. The repository-owned Java 17 fixture proves
+classpath and module-path compiler activation for Groovy 3, 4, and 5. Named consumers must require
+`org.codehaus.groovy` for Groovy 3 or `org.apache.groovy` for Groovy 4 and 5, alongside the KlumCast automatic modules they
+use.
 
 # Overview
 
@@ -258,12 +294,17 @@ The Annotations in the above example all have to follow additional placement rul
 
 ### Dependencies
 
-KlumCast ist split into two modules: klum-cast-annotations and klum-cast-compile. The annotations module contains the preconfigured validations as well as the base class for custom validations. The compile module contains the AST-Transformation that is applied to the schema.
+KlumCast is split into three artifacts. `klum-cast-annotations` contains lightweight metadata and built-in validation
+annotations, `klum-cast-spi` contains custom-check contracts, and `klum-cast-compile` contains and activates the global
+AST transformation.
 
 The annotations module must be present at runtime (since the validation transformation needs access to the compiled classes of the annotations). However,
 the compile module only needs to be present during the compilation of the schema, but not during the compilation of the model itself, i.e. it should be a compileOnly dependency in Gradle or an optional dependency in Maven. Since the compile module contains a global AST-Transformation, it would have a slight impact on the compilation time of the model, so it should be avoided to have it present during the compilation of the model.
 
-If a project is split into the usual three modules (annotations, ast and runtime), the klumcast-annotations module should be a regular dependency of the annotations module (`compile` for Maven, `api` or `implementation` for Gradle), while the klumcast-compile module should be a compileOnly dependency of the ast module (`optional` for Maven, `compileOnly` for Gradle). See KlumAST for an example.
+If a project is split into the usual annotations, AST, and runtime modules, `klum-cast-annotations` should be a regular
+dependency of the annotations module, while `klum-cast-compile` should be a compile-only/optional dependency of the AST
+module. Custom-check implementations additionally declare `klum-cast-spi` and the matching Groovy compiler coordinate;
+neither dependency is selected transitively by the SPI artifact.
 
 ### Declaring validations
 
@@ -379,8 +420,8 @@ returns zero or more `Diagnostic` values; it does not inherit mutable invocation
 nested form uses the type-safe `@CheckBinding`. Use name-based `@KlumCastValidator("fully.qualified.CheckName")` only
 when an annotations artifact must compile separately from its check implementation.
 
-Typically a custom validation has a control annotation, placed on the annotation to validate, and a check class. Both
-must be on the custom-check author's classpath through `klum-cast-spi`.
+Typically a custom validation has a control annotation, placed on the annotation to validate, and a check class. The
+custom-check compilation classpath must contain `klum-cast-spi` and the matching Groovy compiler dependency explicitly.
 
 ## The control annotation
 
