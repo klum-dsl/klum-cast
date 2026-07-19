@@ -73,7 +73,7 @@ members; typed declarations list filter classes in `@CheckBinding(filters = ...)
 
 ## 5. Verify passing and failing uses
 
-[`RoleBasedOnboardingTest`](../../klum-cast-compile/src/test/groovy/com/blackbuild/klum/cast/docs/onboarding/RoleBasedOnboardingTest.groovy)
+[`RoleBasedOnboardingDocumentaryTest`](../../klum-cast-compile/src/test/groovy/com/blackbuild/klum/cast/docs/onboarding/RoleBasedOnboardingDocumentaryTest.groovy)
 compiles a passing use and asserts the failing diagnostic's code, message, filename, line, and source text. The repository
 recompiles this same test source independently in Groovy 3, 4, and 5; there are no generation-specific copies.
 

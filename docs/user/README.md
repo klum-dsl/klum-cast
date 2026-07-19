@@ -15,7 +15,7 @@ Choose a journey:
 - [Check user](check-user.md)
 
 All examples form one small `@DomainSetter` journey and are compiled by
-[`RoleBasedOnboardingTest`](../../klum-cast-compile/src/test/groovy/com/blackbuild/klum/cast/docs/onboarding/RoleBasedOnboardingTest.groovy)
+[`RoleBasedOnboardingDocumentaryTest`](../../klum-cast-compile/src/test/groovy/com/blackbuild/klum/cast/docs/onboarding/RoleBasedOnboardingDocumentaryTest.groovy)
 in every supported Groovy lane.
 
 ## The compile-time model

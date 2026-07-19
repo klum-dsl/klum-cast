@@ -25,8 +25,14 @@ package com.blackbuild.klum.cast.docs.onboarding
 
 import com.blackbuild.klum.cast.validation.AstSpec
 import org.codehaus.groovy.control.MultipleCompilationErrorsException
+import spock.lang.Issue
+import spock.lang.See
+import spock.lang.Tag
 
-class RoleBasedOnboardingTest extends AstSpec {
+@Issue('28')
+@Tag('documentary')
+@See('https://github.com/klum-dsl/klum-cast/blob/main/docs/user/check-user.md#2-use-it-in-groovy-source')
+class RoleBasedOnboardingDocumentaryTest extends AstSpec {
 
     def "a valid setter-shaped use compiles"() {
         when:

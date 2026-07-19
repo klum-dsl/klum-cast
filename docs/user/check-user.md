@@ -32,7 +32,7 @@ contain them are artifacts, not user roles.
 ## 2. Use it in Groovy source
 
 The valid source in
-[`RoleBasedOnboardingTest`](../../klum-cast-compile/src/test/groovy/com/blackbuild/klum/cast/docs/onboarding/RoleBasedOnboardingTest.groovy)
+[`RoleBasedOnboardingDocumentaryTest`](../../klum-cast-compile/src/test/groovy/com/blackbuild/klum/cast/docs/onboarding/RoleBasedOnboardingDocumentaryTest.groovy)
 has the required name, return type, and parameter count:
 
 ```groovy
