@@ -3,7 +3,8 @@
 Date: 2026-07-16
 
 Delivery update: 2026-07-19. Issue #13 implements the accepted KlumAST #455 handoff: Java 17, one Groovy-3-compiled
-production artifact set, and isolated Groovy 3/4/5 tests plus Gradle/Maven publication consumers. The evidence baseline
+production artifact set, and isolated Groovy 3/4/5 tests plus Gradle/Maven publication consumers. Issue #22 delivers the
+deterministic OR tracer and closes with the accepted AND/XOR/conditional scope recorded in ADR 0025. The evidence baseline
 below describes the pre-migration repository that motivated the decisions; the confirmed contract sections and issue
 handoff record the delivered 0.4 state.
 
@@ -220,8 +221,8 @@ SPI artifact only; it is not a permanent package contract.
 
 - #12 owns the explicit-module-descriptor feasibility POC across the supported Groovy generations; stable automatic-module
   identities are already decided.
-- #22 owns detailed boolean composition semantics over the confirmed applicability, diagnostic, and technical-failure
-  model.
+- #22 delivered the OR tracer and accepted composition outcomes over the confirmed applicability, diagnostic, and
+  technical-failure model; AND/XOR syntax remains deferred and conditional syntax is rejected for this slice.
 - #23 is an optional investigation gated on a second concrete node-kind dispatch use case.
 - Exact Java type names and diagnostic-template syntax remain implementation design within #16 and #17's confirmed
   boundaries.
@@ -241,8 +242,9 @@ its outcome.
   decision, the speculative IDE idea, or KlumAST-specific validation semantics.
 
 - [#22 — Define boolean composition strategies over check outcomes](https://github.com/klum-dsl/klum-cast/issues/22)
-  follows the incomplete OR/XOR/conditional scope of #2 and #21. It will prove composition against the confirmed immutable
-  context and diagnostic/technical-failure contracts while keeping the cross-repository build design out of scope.
+  followed the incomplete OR/XOR/conditional scope of #2 and #21. It delivered the deterministic OR tracer against the
+  confirmed immutable context and diagnostic/technical-failure contracts while keeping the cross-repository build design
+  out of scope.
 
 - [#23 — Investigate reusable node-kind dispatch for consumer-authored checks](https://github.com/klum-dsl/klum-cast/issues/23)
   compares KlumAST's consumer-owned `FieldAstValidator` pattern with klum-wrap or another independent use case. It gates

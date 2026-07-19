@@ -52,6 +52,16 @@ The Maven equivalent uses `provided` scope for SPI, compiler activation, and the
 </dependency>
 ```
 
+Adding `klum-cast-compile` to a Groovy compilation classpath activates KlumCast through its global AST-transformation
+service descriptor; removing that artifact disables KlumCast while annotations and SPI remain inert. The transformation
+runs during `SEMANTIC_ANALYSIS` and scans the classes declared in each Groovy source unit, including annotation uses on
+classes, constructors, methods, parameters, and fields. It follows validation annotations recursively and avoids visiting
+Groovy properties separately because their field or accessor annotations are already scanned.
+
+Validation is guaranteed to finish before consumer transformations in `CANONICALIZATION` or a later phase. KlumCast does
+not promise ordering against another `SEMANTIC_ANALYSIS` transformation, so a consumer that synthesizes or mutates
+annotations in that same phase needs an explicit coordination mechanism rather than relying on transform order.
+
 New checks implement `Check` and return zero or more `Diagnostic` values from `check(CheckContext)`. A context is
 immutable and provides the validated annotation, target, applicable control annotation, member name, binding metadata,
 and composition path. Checks and `ApplicabilityFilter` implementations require an accessible no-argument constructor
@@ -146,7 +156,7 @@ diagnostics are emitted deterministically in source and binding order.
 `ValidationException` becomes one diagnostic using the adapter's check-class code. For source compatibility, the
 deprecated adapter retains its historical runtime-exception-to-message behavior; new `Check` implementations must return
 expected failures as diagnostics and let unexpected exceptions follow the technical-failure path with their causes
-preserved. Boolean branch aggregation and outcome semantics remain deferred to issue #22.
+preserved.
 
 ## Java modules and classpaths
 
