@@ -2,6 +2,11 @@
 
 Date: 2026-07-16
 
+Delivery update: 2026-07-19. Issue #13 implements the accepted KlumAST #455 handoff: Java 17, one Groovy-3-compiled
+production artifact set, and isolated Groovy 3/4/5 tests plus Gradle/Maven publication consumers. The evidence baseline
+below describes the pre-migration repository that motivated the decisions; the confirmed contract sections and issue
+handoff record the delivered 0.4 state.
+
 This is the repository-owned evidence and decision log for the library-native architecture session requested after
 KlumAST issue #450. It separates confirmed KlumCast decisions from candidate improvements and from the cross-repository
 multi-Groovy investigation in KlumAST issue #455.
@@ -59,9 +64,8 @@ compiler presentation.
 ### Groovy AST API boundary
 
 The supported check SPI intentionally exposes Groovy compiler AST types. ADR 0004 accepts Groovy AST as public API rather
-than introducing a limiting wrapper abstraction. The owning artifact must publish Groovy as an API dependency, and the
-README/Javadocs for the eventual SPI must document supported Groovy generations, dependency expectations, and migration
-constraints explicitly.
+than introducing a limiting wrapper abstraction. ADR 0026 applies the accepted multi-Groovy handoff: SPI metadata does not
+force a version selector, and custom-check authors explicitly select the matching Groovy 3, 4, or 5 compiler dependency.
 
 ### Artifact roles
 
@@ -151,10 +155,10 @@ breaking migration from the current base-class API.
 
 ### Published dependency graph
 
-ADR 0019 keeps annotations and SPI as siblings with no edge between them. SPI publicly depends on the Groovy compiler API;
-compile depends on both siblings and normalizes both binding forms. Annotation-only consumers remain Groovy-free, typed
-check authors opt into SPI, and adding compile supplies both dependencies for activation. Groovy version and variant
-selection remains owned by KlumAST #455.
+ADR 0019 keeps annotations and SPI as siblings with no edge between them. SPI exposes the Groovy compiler API but publishes
+no forced Groovy selector; compile depends on both siblings and normalizes both binding forms. Annotation-only consumers
+remain Groovy-free, typed-check authors add SPI and matching Groovy explicitly, and adding compile owns activation. ADR
+0026 records the accepted KlumAST #455 version-selection handoff.
 
 ### JPMS identity
 
@@ -221,7 +225,7 @@ SPI artifact only; it is not a permanent package contract.
 - #23 is an optional investigation gated on a second concrete node-kind dispatch use case.
 - Exact Java type names and diagnostic-template syntax remain implementation design within #16 and #17's confirmed
   boundaries.
-- The supported Groovy matrix and common multi-Groovy build design remain separate in #13 and KlumAST #455.
+- The supported 0.4 matrix is Java 17 with Groovy 3, 4, and 5 under #13 and accepted KlumAST #455 ADR 0011.
 
 No further library-native product decision is required before the focused issues can prepare implementation plans and
 proofs. Production API/build changes still require their normal issue workflow and review.
@@ -263,7 +267,7 @@ its outcome.
   when completion scenarios are concrete. Eclipse integration is lower priority because its incremental compiler already
   reduces the immediate feedback gap. This is neither a roadmap commitment nor a request for a GitHub issue.
 
-## Issue #455 handoff: Groovy convention plugin
+## Issue #455 handoff: Groovy 3–5 verification contract
 
 KlumAST already publishes `com.blackbuild.convention.groovy` from its combined `klum-ast-gradle-plugin` artifact. Its wiki
 explicitly says the plugin is not Klum-specific and might be extracted. The implementation selects matching Groovy BOM,
@@ -271,14 +275,8 @@ Groovy, and Spock coordinates across Groovy 3/4/5, handles the `org.codehaus.gro
 supports root-project inheritance and skipping Spock, and configures JUnit Platform. Scenario fixtures cover Groovy 3, 4,
 and 5 plus explicit-version and no-Spock cases.
 
-The implementation classes are otherwise generic, but their packages, plugin publication, version lifecycle, and direct
-application by the KlumAST schema/model plugins are currently owned by the KlumAST Gradle-plugin artifact. Extraction could
-give KlumCast and AnnoDocimal a shared dependency-selection convention without depending on KlumAST's combined plugin, but
-the decision must account for plugin-ID/version migration, compatibility with KlumAST's internal application, and whether a
-consumer dependency convention is the same concern as repository test-lane orchestration. Those decisions remain wholly
-owned by KlumAST #455.
-
-The parallel AnnoDocimal architecture session adds one escalation option: if the Groovy module-name transition makes a
-sound shared JPMS design impractical, the libraries may consider dropping Groovy 3 support entirely. Jenkins compatibility
-was the historical reason for retaining Groovy 2.4 so long, so older-Groovy support is not absolute. Dropping Groovy 3 is
-explicitly a last-resort cross-library option, not the current recommendation and not a decision KlumCast makes here.
+KlumAST issue #455, ADR 0011, its executable plan, and merged pull request #497 accepted a repository-local lane handoff:
+compile production once against Groovy 3, recompile tests and fixtures separately with matching Groovy/Spock 3, 4, and 5,
+and gate publication on the whole matrix. KlumCast implements that contract directly and does not depend on KlumAST issue
+#496 or extract KlumAST's convention plugin. Published-consumer and JPMS fixtures additionally prove the
+`org.codehaus.groovy` to `org.apache.groovy` group/module-name boundary.

@@ -37,8 +37,8 @@ import java.lang.annotation.*
 @Retention(RetentionPolicy.RUNTIME)
 @KlumCastValidated
 @interface MyAnnotation {
-    @OnlyOn(ElementType.METHOD) String onMethod()
-    @OnlyOn(ElementType.TYPE) String onClass()
+    @OnlyOn(ElementType.METHOD) String onMethod() default ''
+    @OnlyOn(ElementType.TYPE) String onClass() default ''
 }'''
     }
 

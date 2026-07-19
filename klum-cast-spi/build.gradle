@@ -3,5 +3,5 @@ apply plugin: 'java-library'
 description 'Groovy compiler SPI for KlumCast checks and applicability filters'
 
 dependencies {
-    api "$rootProject.ext.groovyGroup:groovy:$rootProject.ext.groovyVersion"
+    compileOnly rootProject.ext.groovyDependencies[3]
 }

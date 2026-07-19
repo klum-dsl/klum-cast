@@ -15,8 +15,8 @@ classpath="$ANNOTATIONS_JAR:$SPI_JAR:$COMPILER_JAR:$GROOVY_JAR"
 module_path="$classpath"
 java_bin="$JAVA_HOME/bin"
 
-[[ "$work_dir" == */module-feasibility ]] || {
-    echo "Fixture build directory must end in /module-feasibility: $work_dir" >&2
+[[ "$work_dir" == */module-feasibility-groovy[345] ]] || {
+    echo "Fixture build directory must identify one Groovy lane: $work_dir" >&2
     exit 2
 }
 rm -rf -- "$work_dir"
@@ -81,7 +81,7 @@ fi
 groovy_module="$(grep -E '^(org\.codehaus\.groovy|org\.apache\.groovy)@' "$module_description" | head -n 1 | sed 's/@.*//')"
 case "$GROOVY_VERSION" in
     3.*) [[ "$groovy_module" == org.codehaus.groovy ]] ;;
-    4.*) [[ "$groovy_module" == org.apache.groovy ]] ;;
+    4.*|5.*) [[ "$groovy_module" == org.apache.groovy ]] ;;
     *) echo "Unexpected module-path-success Groovy lane: $GROOVY_VERSION" >&2; exit 1 ;;
 esac
 

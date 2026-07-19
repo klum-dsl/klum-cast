@@ -1,0 +1,89 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <groupId>fixture</groupId>
+    <artifactId>klum-cast-maven-consumer</artifactId>
+    <version>1.0.0</version>
+
+    <properties>
+        <maven.compiler.release>17</maven.compiler.release>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <klumCastVersion>unspecified</klumCastVersion>
+        <fixtureRepository>unspecified</fixtureRepository>
+        <groovyGroup>unspecified</groovyGroup>
+        <groovyVersion>unspecified</groovyVersion>
+    </properties>
+
+    <repositories>
+        <repository>
+            <id>klum-cast-consumer-test</id>
+            <url>${fixtureRepository}</url>
+        </repository>
+    </repositories>
+
+    <dependencies>
+        <dependency>
+            <groupId>com.blackbuild.klum.cast</groupId>
+            <artifactId>klum-cast-annotations</artifactId>
+            <version>${klumCastVersion}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.blackbuild.klum.cast</groupId>
+            <artifactId>klum-cast-spi</artifactId>
+            <version>${klumCastVersion}</version>
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>com.blackbuild.klum.cast</groupId>
+            <artifactId>klum-cast-compile</artifactId>
+            <version>${klumCastVersion}</version>
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>${groovyGroup}</groupId>
+            <artifactId>groovy</artifactId>
+            <version>${groovyVersion}</version>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <sourceDirectory>../src/main/java</sourceDirectory>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <version>3.15.0</version>
+            </plugin>
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>exec-maven-plugin</artifactId>
+                <version>3.6.3</version>
+                <executions>
+                    <execution>
+                        <id>compile-groovy-consumer</id>
+                        <phase>process-classes</phase>
+                        <goals>
+                            <goal>exec</goal>
+                        </goals>
+                        <configuration>
+                            <executable>${java.home}/bin/java</executable>
+                            <classpathScope>compile</classpathScope>
+                            <arguments>
+                                <argument>-Dklumcast.fixture.marker=${klumcast.fixture.marker}</argument>
+                                <argument>-classpath</argument>
+                                <classpath/>
+                                <argument>org.codehaus.groovy.tools.FileSystemCompiler</argument>
+                                <argument>-d</argument>
+                                <argument>${project.build.outputDirectory}</argument>
+                                <argument>../src/main/groovy/fixture/ConsumerTarget.groovy</argument>
+                            </arguments>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
+    </build>
+</project>
