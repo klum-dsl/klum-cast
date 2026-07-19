@@ -5,9 +5,9 @@ Groovy compilation that uses it. This journey turns the aggregator's `@SetterLik
 
 ## Prerequisites and dependencies
 
-The [example project-module overview](README.md#example-project-modules) uses the dependency chain `:custom-checks` →
-`:domain-annotations` → `:consumer`. This page configures `:consumer`. Use Java 17 and Groovy 3, 4, or 5, and put
-`klum-cast-compile` on this module's Groovy compilation classpath:
+The executable journey uses the typed path in the
+[project-module and binding matrix](README.md#example-project-modules-and-binding-choice). This page configures
+`:consumer`. Use Java 17 and Groovy 3, 4, or 5, and put `klum-cast-compile` on this module's Groovy compilation classpath:
 
 ```groovy
 dependencies {
@@ -20,6 +20,10 @@ Because `:domain-annotations` owns `@DomainSetter` and exports the annotations u
 on that project makes `@DomainSetter`, `@SetterLike`, and their required annotation types available to `:consumer`; do not
 repeat those dependencies here. Maven uses the default compile scope for `domain-annotations` and `provided` for
 `klum-cast-compile`.
+
+For the split name-bound path, also add `compileOnly project(":custom-check-impl")` here. The metadata contains only the
+implementation class name, so the named check and filter must be resolvable from this validated Groovy compilation's
+classloader. The typed example needs no such extra edge because `:domain-annotations` already exports `:custom-checks`.
 
 If a different layout declares `@DomainSetter` in the module currently being configured, that module also owns the
 validated annotation. It must then declare direct dependencies on `klum-cast-annotations` and the artifact containing

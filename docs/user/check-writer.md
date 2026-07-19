@@ -5,21 +5,26 @@ annotation whose check accepts `setName` and reports an actionable diagnostic fo
 
 ## Prerequisites and dependencies
 
-The [example project-module overview](README.md#example-project-modules) uses the dependency chain `:custom-checks` →
-`:domain-annotations` → `:consumer`. This page configures `:custom-checks`. Use Java 17 and select the Groovy 3, 4, or 5
-compiler that matches the compilation where the check will run.
+The executable journey uses the typed path in the
+[project-module and binding matrix](README.md#example-project-modules-and-binding-choice). This page configures
+`:custom-checks`. Use Java 17 and select the Groovy 3, 4, or 5 compiler that matches the compilation where the check will
+run.
 
 ```groovy
 dependencies {
-    compileOnly "com.blackbuild.klum.cast:klum-cast-spi:$klumCastVersion"
+    api "com.blackbuild.klum.cast:klum-cast-spi:$klumCastVersion"
     compileOnly "org.apache.groovy:groovy:$groovyVersion" // Groovy 4 or 5; use org.codehaus.groovy for Groovy 3
 }
 ```
 
-Use Maven's `provided` scope for SPI and Groovy. The typed example needs no annotations-artifact API; add
-`klum-cast-annotations` at `implementation`/default compile scope when the same module uses built-in annotations or
-name-based metadata. Add `klum-cast-compile` as `compileOnly`/`provided` only to a Groovy compilation that should execute
-the check. See the [shared dependency table](README.md#dependencies-by-role).
+The SPI is `api` because the public validation annotation exposes `@CheckBinding` and the same artifact publishes the
+`Check` and `ApplicabilityFilter` implementations. A downstream `:domain-annotations` dependency therefore receives the
+SPI transitively and must not redeclare it. Use Maven's default compile scope for SPI and `provided` for Groovy.
+
+The typed module needs no annotations-artifact API. In the split name-bound path, `:custom-check-metadata` instead uses
+`api` annotations and stays independent of SPI/Groovy; `:custom-check-impl` uses `compileOnly` SPI, matching Groovy, and
+the metadata project. Add `klum-cast-compile` only to a Groovy compilation that should execute the check. See the
+[shared dependency table](README.md#dependencies-by-role).
 
 ## 1. Declare and bind the validation annotation
 

@@ -7,9 +7,9 @@ This journey combines two built-in validations with the writer journey's custom 
 
 ## Prerequisites and dependencies
 
-The [example project-module overview](README.md#example-project-modules) uses the dependency chain `:custom-checks` →
-`:domain-annotations` → `:consumer`. This page configures `:domain-annotations`, which owns both `@SetterLike` and
-`@DomainSetter`:
+The executable journey uses the typed path in the
+[project-module and binding matrix](README.md#example-project-modules-and-binding-choice). This page configures
+`:domain-annotations`, which owns both `@SetterLike` and `@DomainSetter`:
 
 ```groovy
 dependencies {
@@ -18,10 +18,14 @@ dependencies {
 }
 ```
 
-The `api` edges make the runtime-retained annotations in `@SetterLike` and `@DomainSetter` available when `:consumer`
-compiles against them. Use Maven's default transitive compile scope for both. Add `klum-cast-spi` only if this source also
-uses typed bindings or implements checks/filters. Add `klum-cast-compile` only to Groovy compilations that should run
-validation. See the [shared dependency table](README.md#dependencies-by-role).
+The `api project(":custom-checks")` edge is specific to this typed example: that project owns both
+`@MethodNameStartsWith` and its implementation and exports its SPI dependency. Do not add SPI separately here. For a
+split name-bound check, replace that edge with `api project(":custom-check-metadata")`; the implementation belongs on the
+validated Groovy compilation classpath, not on this annotation-composition module.
+
+These `api` edges make the runtime-retained annotations in `@SetterLike` and `@DomainSetter` available when `:consumer`
+compiles against them. Use Maven's default transitive compile scope. Add `klum-cast-compile` only to Groovy compilations
+that should run validation. See the [shared dependency table](README.md#dependencies-by-role).
 
 ## Compose the setter validation
 

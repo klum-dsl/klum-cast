@@ -18,16 +18,27 @@ All examples form one small `@DomainSetter` journey and are compiled by
 [`RoleBasedOnboardingDocumentaryTest`](../../klum-cast-compile/src/test/groovy/com/blackbuild/klum/cast/docs/onboarding/RoleBasedOnboardingDocumentaryTest.groovy)
 in every supported Groovy lane.
 
-## Example project modules
+## Example project modules and binding choice
 
-The three roles can be combined in one module. To make ownership and dependency direction unambiguous, this journey uses
-three example project modules:
+The roles can be combined in one module. To make ownership and dependency direction unambiguous, the executable journey
+uses the typed, co-located path below. Choose the split name-bound path only when metadata must compile independently of
+the check implementation.
 
-| Example module | Owns | Direct dependencies |
+| Decision | Typed, co-located check | Split, name-bound check |
 |---|---|---|
-| `:custom-checks` | `@MethodNameStartsWith`, its check, and its filter | `compileOnly` KlumCast SPI and the matching Groovy compiler |
-| `:domain-annotations` | composed `@SetterLike` and validated `@DomainSetter` | `api` KlumCast annotations and `api project(":custom-checks")` |
-| `:consumer` | Groovy targets that use `@DomainSetter` | `implementation project(":domain-annotations")` and `compileOnly` KlumCast compiler activation |
+| Binding declaration | `@CheckBinding(MyCheck.class)` | `@KlumCastValidator("example.MyCheck")` |
+| Custom modules | `:custom-checks` owns the validation annotation, check, and filter | `:custom-check-metadata` owns the validation annotation; `:custom-check-impl` owns the check and filter |
+| Custom-module dependencies | `:custom-checks`: `api` SPI; `compileOnly` matching Groovy | `:custom-check-metadata`: `api` annotations. `:custom-check-impl`: `compileOnly` SPI, matching Groovy, and `:custom-check-metadata` |
+| `:domain-annotations` | `api` annotations; `api project(":custom-checks")` | `api` annotations; `api project(":custom-check-metadata")` |
+| `:consumer` | `implementation project(":domain-annotations")`; `compileOnly` compiler activation | same, plus `compileOnly project(":custom-check-impl")` so the compiler can resolve the named check |
+
+Use this checklist:
+
+1. If the validation annotation can compile and publish with its check implementation, use the typed path. This is the
+   path used by `@MethodNameStartsWith` in the executable example.
+2. If metadata must remain lightweight or a metadata/implementation cycle prevents separate compilation, use the
+   name-bound path and put its implementation on every validated Groovy compilation classpath.
+3. Put `klum-cast-compile` only on Groovy compilations that should execute validation.
 
 The `api` scopes assume Gradle's `java-library` plugin. They are intentional because the dependency annotations are
 recorded in public, runtime-retained annotation metadata that a downstream Groovy compilation must inspect. Maven's
@@ -57,7 +68,7 @@ KlumCast 0.4 requires Java 17 and supports Groovy 3, 4, and 5.
 | Artifact or dependency | Gradle scope | Maven scope | Add it when |
 |---|---|---|---|
 | `com.blackbuild.klum.cast:klum-cast-annotations` | `implementation` or `api` | default (`compile`) | Source declares or uses KlumCast metadata or built-in validation annotations. Use `api` when that metadata is exposed to downstream modules. It has no Groovy dependency. |
-| `com.blackbuild.klum.cast:klum-cast-spi` | `compileOnly` | `provided` | Source implements a check/filter or uses typed `@CheckBinding`. |
+| `com.blackbuild.klum.cast:klum-cast-spi` | `compileOnly` or `api` | `provided` or default (`compile`) | Source implements a check/filter or uses typed `@CheckBinding`. Use `api`/default compile when those SPI types are exposed by a published validation annotation/check artifact. |
 | Matching Groovy compiler | `compileOnly` | `provided` | A check/filter implementation compiles against the AST types exposed by the SPI. |
 | `com.blackbuild.klum.cast:klum-cast-compile` | `compileOnly` | `provided` | A Groovy compilation should run validation. This dependency is the activation switch. |
 
@@ -78,8 +89,9 @@ only composes existing validation annotations normally needs `klum-cast-annotati
 custom validation annotation. A check user needs its validated-annotation artifact and `klum-cast-compile` on the Groovy
 compilation classpath.
 
-The Maven equivalent keeps annotations at the default compile scope and uses `provided` for SPI, the matching Groovy
-compiler, and compiler activation:
+The Maven equivalent keeps annotations at the default compile scope. Use default compile for SPI when a published
+validation annotation/check artifact exposes it, and `provided` otherwise. The matching Groovy compiler and compiler
+activation remain `provided`:
 
 ```xml
 <dependency>
