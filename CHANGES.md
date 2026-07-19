@@ -16,6 +16,8 @@
   Groovy compiler explicitly (`org.codehaus.groovy` for Groovy 3; `org.apache.groovy` for Groovy 4 and 5).
 - Retained the 0.4 migration bridges for the legacy base class, exception/result shape, raw typed binding, and old OR
   declarations. These bridges are scheduled for removal in 1.0; see `docs/migration/0.4.md`.
+- Added interim role-based onboarding for check writers, check aggregators, and check users, backed by one executable
+  custom-check, composed-validation, and consuming-use journey in every supported Groovy lane.
 
 ## 0.3.x
 
