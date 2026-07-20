@@ -6,6 +6,7 @@ def klumCastVersion = providers.gradleProperty('klumCastVersion').get()
 def fixtureRepository = providers.gradleProperty('fixtureRepository').get()
 def groovyGroup = providers.gradleProperty('groovyGroup').get()
 def groovyVersion = providers.gradleProperty('groovyVersion').get()
+def groovyGeneration = providers.gradleProperty('groovyGeneration').get()
 def activationMarker = layout.buildDirectory.file('klumcast-activation.txt')
 
 repositories {
@@ -66,5 +67,54 @@ tasks.register('verifyFixture') {
     doLast {
         if (!activationMarker.get().asFile.text.contains('fixture.FixtureCheck'))
             throw new GradleException('KlumCast compiler activation marker was not written')
+
+        def components = configurations.groovyCompiler.incoming.resolutionResult.allComponents*.id.findAll {
+            it instanceof org.gradle.api.artifacts.component.ModuleComponentIdentifier
+        }
+        ['klum-cast-annotations', 'klum-cast-spi', 'klum-cast-compile'].each { artifact ->
+            if (!components.any {
+                it.group == 'com.blackbuild.klum.cast' && it.module == artifact && it.version == klumCastVersion
+            })
+                throw new GradleException("Exact public coordinate ${artifact}:${klumCastVersion} was not resolved")
+        }
+
+        def expectedGroovyGroup = groovyGeneration == '3' ? 'org.codehaus.groovy' : 'org.apache.groovy'
+        def mismatchedGroovy = components.findAll {
+            it.module == 'groovy' && (it.group != expectedGroovyGroup || it.version != groovyVersion)
+        }
+        if (!mismatchedGroovy.isEmpty())
+            throw new GradleException("Consumer classpath contains mismatched Groovy modules: ${mismatchedGroovy}")
+    }
+}
+
+tasks.register('verifyModuleFixture') {
+    dependsOn compileConsumerGroovy
+    inputs.files(configurations.groovyCompiler)
+    inputs.dir(layout.projectDirectory.dir('module-path'))
+
+    doLast {
+        def artifactJar = { String artifact ->
+            def jar = configurations.groovyCompiler.files.find {
+                it.name ==~ /${artifact}-${java.util.regex.Pattern.quote(klumCastVersion)}\.jar/
+            }
+            if (jar == null)
+                throw new GradleException("Could not locate ${artifact}:${klumCastVersion} in the public consumer classpath")
+            jar
+        }
+        def groovyJar = configurations.groovyCompiler.files.find {
+            it.name == "groovy-${groovyVersion}.jar"
+        }
+        if (groovyJar == null)
+            throw new GradleException("Could not locate Groovy ${groovyVersion} in the public consumer classpath")
+
+        exec {
+            commandLine 'bash', layout.projectDirectory.file('module-path/run.sh').asFile.absolutePath
+            environment 'ANNOTATIONS_JAR', artifactJar('klum-cast-annotations')
+            environment 'SPI_JAR', artifactJar('klum-cast-spi')
+            environment 'COMPILER_JAR', artifactJar('klum-cast-compile')
+            environment 'GROOVY_JAR', groovyJar
+            environment 'GROOVY_VERSION', groovyVersion
+            environment 'FIXTURE_BUILD_DIR', layout.buildDirectory.dir("module-feasibility-groovy${groovyGeneration}").get().asFile
+        }
     }
 }

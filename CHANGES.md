@@ -18,6 +18,8 @@
   declarations. These bridges are scheduled for removal in 1.0; see `docs/migration/0.4.md`.
 - Added interim role-based onboarding for check writers, check aggregators, and check users, backed by one executable
   custom-check, composed-validation, and consuming-use journey in every supported Groovy lane.
+- Codified protected, immutable RC/final publication and recovery procedures for the complete three-artifact product, and
+  added clean Maven Central resolve-back evidence for Gradle/Maven, Groovy 3–5, classpath activation, and JPMS behavior.
 
 ## 0.3.x
 
