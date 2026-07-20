@@ -1,7 +1,7 @@
 apply plugin: 'java-library'
 apply plugin: 'jvm-test-suite'
 
-description "compileOnly part of KlumCAST"
+description 'KlumCast compiler integration for annotation-use validation during Groovy compilation'
 
 dependencies {
     // all dependencies are compile time dependencies (for AST "runtime" is compile time of a client project")
