@@ -21,8 +21,9 @@ multi-Groovy investigation in KlumAST issue #455.
   and registers a global semantic-analysis AST transformation through `META-INF/services`.
 - Both artifacts contain `com.blackbuild.klum.cast.checks.impl`, creating a split package. Neither artifact declares an
   explicit JPMS descriptor or stable automatic-module name.
-- The current JDK 11 build passes 56 tests under Groovy 2.4.21, 3.0.17, and 4.0.12. Compile-module coverage measured under
-  Groovy 4 is 83% instructions and 74% branches; the annotations artifact has no test or coverage source set.
+- At the pre-migration 2026-07-16 baseline, the JDK 11 build passed 56 tests under Groovy 2.4.21, 3.0.17, and 4.0.12.
+  Compile-module coverage measured under Groovy 4 was 83% instructions and 74% branches; the annotations artifact had no
+  test or coverage source set. The delivered 0.4 baseline is Java 17 with Groovy 3, 4, and 5 as recorded above.
 - Open repository issues relevant to architecture are #12 (module descriptors), #13 (Groovy 2), #16 (check context), and
   #17 (structured messages).
 - KlumAST consumes both artifacts through public `api` edges, defines eight string-bound custom checks, and retains two
