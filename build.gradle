@@ -31,6 +31,74 @@ ext {
 group = 'com.blackbuild.klum.cast'
 description = 'Checks for automatic validation of annotation placement during AST transformations.'
 
+def publicReleaseVersion = providers.gradleProperty('release.version')
+def publicReleaseChannel = providers.gradleProperty('release.channel')
+def releaseAuthorization = providers.environmentVariable('KLUM_CAST_RELEASE_AUTHORIZED')
+def publicConsumerVersion = providers.gradleProperty('publicVersion')
+def publicConsumerRepository = 'https://repo.maven.apache.org/maven2'
+
+def validateVersionForChannel = { String version, String channel ->
+    if (channel == 'rc' && !(version ==~ /\d+\.\d+\.\d+-rc\.[1-9]\d*/))
+        throw new GradleException("Release-candidate versions must match X.Y.Z-rc.N with N greater than zero: ${version}")
+    if (channel == 'final' && !(version ==~ /\d+\.\d+\.\d+/))
+        throw new GradleException("Final versions must match X.Y.Z: ${version}")
+    if (!(channel in ['rc', 'final']))
+        throw new GradleException("Public release channel must be rc or final: ${channel}")
+}
+
+def validatePublicRelease = tasks.register('validatePublicRelease') {
+    group = 'verification'
+    description = 'Validates the exact RC/final identity and local preconditions without publishing.'
+    dependsOn tasks.named('check')
+
+    doLast {
+        if (!publicReleaseVersion.isPresent() || !publicReleaseChannel.isPresent())
+            throw new GradleException('Public release work requires -Prelease.version and -Prelease.channel=rc|final')
+
+        def requestedVersion = publicReleaseVersion.get()
+        def requestedChannel = publicReleaseChannel.get()
+        validateVersionForChannel(requestedVersion, requestedChannel)
+
+        if (project.version.toString() != requestedVersion)
+            throw new GradleException("Resolved project version ${project.version} does not match ${requestedVersion}")
+        if (JavaVersion.current() != JavaVersion.VERSION_17)
+            throw new GradleException('Public release work must use JDK 17')
+        if (!gradle.includedBuilds.isEmpty())
+            throw new GradleException('Public release work is not allowed with composite builds')
+
+        def status = providers.exec {
+            commandLine 'git', 'status', '--porcelain=v1'
+        }.standardOutput.asText.get().trim()
+        if (!status.isEmpty())
+            throw new GradleException('Public release work requires a clean repository')
+    }
+}
+
+def verifyReleaseAuthorization = tasks.register('verifyReleaseAuthorization') {
+    group = 'publishing'
+    description = 'Requires the protected authorization matching this RC/final publication.'
+    dependsOn validatePublicRelease
+
+    doLast {
+        def requestedChannel = publicReleaseChannel.get()
+        if (releaseAuthorization.orNull != requestedChannel)
+            throw new GradleException("Protected ${requestedChannel} authorization is required")
+    }
+}
+
+def validatePublicCoordinates = tasks.register('validatePublicCoordinates') {
+    group = 'verification'
+    description = 'Validates an exact immutable public RC/final coordinate without publishing.'
+
+    doLast {
+        if (!publicConsumerVersion.isPresent())
+            throw new GradleException('Public resolution verification requires -PpublicVersion=X.Y.Z[-rc.N]')
+        def version = publicConsumerVersion.get()
+        if (!(version ==~ /\d+\.\d+\.\d+(-rc\.[1-9]\d*)?/))
+            throw new GradleException("Public resolution verification accepts only exact RC/final versions: ${version}")
+    }
+}
+
 dependencies {
     mavenDistribution 'org.apache.maven:apache-maven:3.9.12:bin@tar.gz'
 }
@@ -143,9 +211,19 @@ subprojects {
     }
 
     signing {
+        if (providers.gradleProperty('signingKey').isPresent()) {
+            useInMemoryPgpKeys(
+                    providers.gradleProperty('signingKey').get(),
+                    providers.gradleProperty('signingPassword').orNull
+            )
+        }
         required {
             gradle.taskGraph.allTasks.any {
-                it.name in ['publishToSonatype', 'closeAndReleaseSonatypeStagingRepository']
+                it.name in [
+                        'publishToSonatype',
+                        'publishMavenJavaPublicationToSonatypeRepository',
+                        'closeAndReleaseSonatypeStagingRepository'
+                ]
             }
         }
         sign publishing.publications.mavenJava
@@ -155,7 +233,11 @@ subprojects {
         dependsOn rootProject.tasks.named('check')
         onlyIf {
             gradle.taskGraph.allTasks.any {
-                it.name in ['publishToSonatype', 'closeAndReleaseSonatypeStagingRepository']
+                it.name in [
+                        'publishToSonatype',
+                        'publishMavenJavaPublicationToSonatypeRepository',
+                        'closeAndReleaseSonatypeStagingRepository'
+                ]
             }
         }
     }
@@ -163,6 +245,8 @@ subprojects {
     tasks.withType(PublishToMavenRepository).configureEach {
         if (name == 'publishConsumerFixturePublicationToSonatypeRepository')
             enabled = false
+        if (name == 'publishMavenJavaPublicationToSonatypeRepository')
+            dependsOn rootProject.tasks.named('verifyReleaseAuthorization')
         if (!name.endsWith('ToConsumerTestRepository'))
             dependsOn rootProject.tasks.named('check')
     }
@@ -191,6 +275,27 @@ def consumerWorkspaces = [3, 4, 5].collectEntries { groovyGeneration ->
         }
         from(publishedConsumerFixture.dir('maven')) {
             into 'maven'
+        }
+        from(layout.projectDirectory.dir('docs/implementation/prototypes/module-path')) {
+            into 'module-path'
+        }
+        into workspace
+    }
+    [(groovyGeneration): [directory: workspace, task: prepareTask]]
+}
+
+def publicConsumerWorkspaces = [3, 4, 5].collectEntries { groovyGeneration ->
+    def workspace = layout.buildDirectory.dir("public-consumer-workspaces/groovy${groovyGeneration}")
+    def prepareTask = tasks.register("preparePublicConsumerWorkspaceGroovy${groovyGeneration}", Sync) {
+        from publishedConsumerFixture.dir('gradle')
+        from(publishedConsumerFixture.dir('src')) {
+            into 'src'
+        }
+        from(publishedConsumerFixture.dir('maven')) {
+            into 'maven'
+        }
+        from(layout.projectDirectory.dir('docs/implementation/prototypes/module-path')) {
+            into 'module-path'
         }
         into workspace
     }
@@ -237,7 +342,7 @@ tasks.register('verifyPublishedMetadata') {
         dependsOn consumerPublishTasks
         dependsOn consumerWorkspaces[groovyGeneration].task
         dir = consumerWorkspaces[groovyGeneration].directory.get().asFile
-        tasks = ['clean', 'verifyFixture']
+        tasks = ['clean', 'verifyFixture', 'verifyModuleFixture']
         startParameter.projectProperties = [
                 klumCastVersion  : project.version.toString(),
                 fixtureRepository: consumerRepository.get().asFile.absolutePath,
@@ -296,6 +401,114 @@ tasks.register('verifyPublishedConsumers') {
     dependsOn tasks.named('verifyPublishedMetadata')
     dependsOn([3, 4, 5].collect { tasks.named("verifyGradleConsumerGroovy${it}") })
     dependsOn([3, 4, 5].collect { tasks.named("verifyMavenConsumerGroovy${it}") })
+}
+
+[3, 4, 5].each { groovyGeneration ->
+    tasks.register("verifyPublicGradleConsumerGroovy${groovyGeneration}", GradleBuild) {
+        group = 'verification'
+        description = "Resolves the exact public KlumCast coordinates with a clean Gradle/Groovy ${groovyGeneration} consumer."
+        dependsOn validatePublicCoordinates
+        dependsOn publicConsumerWorkspaces[groovyGeneration].task
+        dir = publicConsumerWorkspaces[groovyGeneration].directory.get().asFile
+        tasks = ['clean', 'verifyFixture', 'verifyModuleFixture']
+
+        def isolatedGradleHome = layout.buildDirectory.dir("public-consumer-caches/gradle-groovy${groovyGeneration}")
+        startParameter.gradleUserHomeDir = isolatedGradleHome.get().asFile
+        startParameter.refreshDependencies = true
+        startParameter.projectProperties = [
+                klumCastVersion  : publicConsumerVersion.getOrElse('unspecified'),
+                fixtureRepository: publicConsumerRepository,
+                groovyGeneration : groovyGeneration.toString(),
+                groovyGroup      : groovyGeneration == 3 ? 'org.codehaus.groovy' : 'org.apache.groovy',
+                groovyVersion    : rootProject.ext.groovyVersions[groovyGeneration].toString()
+        ]
+        outputs.upToDateWhen { false }
+
+        doFirst {
+            delete isolatedGradleHome
+        }
+    }
+
+    tasks.register("verifyPublicMavenConsumerGroovy${groovyGeneration}", Exec) {
+        group = 'verification'
+        description = "Resolves the exact public KlumCast coordinates with a clean Maven/Groovy ${groovyGeneration} consumer."
+        dependsOn validatePublicCoordinates
+        dependsOn installMaven
+        dependsOn publicConsumerWorkspaces[groovyGeneration].task
+        workingDir publicConsumerWorkspaces[groovyGeneration].directory.get().dir('maven').asFile
+
+        def marker = layout.buildDirectory.file("public-consumer-markers/maven-groovy${groovyGeneration}.txt")
+        def isolatedMavenRepository = layout.buildDirectory.dir("public-consumer-caches/maven-groovy${groovyGeneration}")
+        outputs.upToDateWhen { false }
+
+        doFirst {
+            delete isolatedMavenRepository
+            marker.get().asFile.parentFile.mkdirs()
+            marker.get().asFile.delete()
+            def existingMavenOptions = System.getenv('MAVEN_OPTS') ?: ''
+            environment 'MAVEN_OPTS', "${existingMavenOptions} -Dklumcast.fixture.marker=${marker.get().asFile.absolutePath}".trim()
+            commandLine installMaven.get().destinationDir.toPath().resolve('apache-maven-3.9.12/bin/mvn').toFile(),
+                    '--batch-mode', '--no-transfer-progress', '--update-snapshots',
+                    "-Dmaven.repo.local=${isolatedMavenRepository.get().asFile.absolutePath}",
+                    "-DklumCastVersion=${publicConsumerVersion.get()}",
+                    "-DfixtureRepository=${publicConsumerRepository}",
+                    "-DgroovyGroup=${groovyGeneration == 3 ? 'org.codehaus.groovy' : 'org.apache.groovy'}",
+                    "-DgroovyVersion=${rootProject.ext.groovyVersions[groovyGeneration]}",
+                    'clean', 'verify'
+        }
+
+        doLast {
+            if (!marker.get().asFile.text.contains('fixture.FixtureCheck'))
+                throw new GradleException("Public Maven/Groovy ${groovyGeneration} consumer did not activate KlumCast")
+        }
+    }
+}
+
+tasks.register('verifyPublicReleaseCoordinates') {
+    group = 'verification'
+    description = 'Cleanly resolves one exact public RC/final with Gradle and Maven across Groovy 3, 4, and 5.'
+    dependsOn([3, 4, 5].collect { tasks.named("verifyPublicGradleConsumerGroovy${it}") })
+    dependsOn([3, 4, 5].collect { tasks.named("verifyPublicMavenConsumerGroovy${it}") })
+}
+
+def releasePublicationTasks = subprojects.collect {
+    it.tasks.matching { task -> task.name == 'publishMavenJavaPublicationToSonatypeRepository' }
+}
+def publishCompleteProductToSonatype = tasks.register('publishCompleteProductToSonatype') {
+    group = 'publishing'
+    description = 'Uploads the three signed KlumCast Maven publications to one protected Sonatype staging repository.'
+    dependsOn verifyReleaseAuthorization
+    dependsOn releasePublicationTasks
+}
+
+releasePublicationTasks.each {
+    it.configureEach {
+        doFirst {
+            if (!gradle.taskGraph.hasTask(publishCompleteProductToSonatype.get()))
+                throw new GradleException('Use publishCompleteProductToCentral; individual public artifact publication is forbidden')
+        }
+    }
+}
+
+tasks.matching {
+    it.name in [
+            'closeSonatypeStagingRepository',
+            'releaseSonatypeStagingRepository',
+            'closeAndReleaseSonatypeStagingRepository',
+            'closeAndReleaseStagingRepository'
+    ]
+}.configureEach {
+    dependsOn verifyReleaseAuthorization
+}
+
+tasks.named('closeAndReleaseSonatypeStagingRepository') {
+    dependsOn publishCompleteProductToSonatype
+}
+
+tasks.register('publishCompleteProductToCentral') {
+    group = 'publishing'
+    description = 'Verifies, signs, stages, closes, and releases all three KlumCast artifacts as one protected operation.'
+    dependsOn tasks.named('closeAndReleaseSonatypeStagingRepository')
 }
 
 tasks.named('check') {
