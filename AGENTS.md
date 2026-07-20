@@ -39,5 +39,5 @@ first publication; once review begins, preserve reviewed commits and add follow-
 
 Keep issue links, compatibility notes, test evidence, public documentation, and release-facing documentation consistent
 with user-visible changes. Respond to review feedback once with a consolidated disposition. See
-`docs/agents/pull-requests.md`. Follow `docs/agents/releases.md` for every release candidate or final release; its
-protected publication path is the only supported public release path.
+`docs/agents/pull-requests.md`. `docs/agents/releases.md` is the single maintainer runbook for every release candidate
+or final release; its protected publication path is the only supported public release path.

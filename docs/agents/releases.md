@@ -1,7 +1,10 @@
-# Release and prerelease procedure
+# Maintainer release runbook
 
-This is KlumCast's local runbook for public release candidates and final releases. The shared channel, immutability,
-authorization, and recovery policy is authoritative in
+This is the single, canonical procedure for a KlumCast maintainer publishing a public release candidate (RC) or final
+release. Follow the maintainer path below in order; do not infer a release procedure from individual Gradle tasks or CI
+workflows. Those implementation details exist to enforce this runbook and provide its evidence.
+
+The shared channel, immutability, authorization, and recovery policy is authoritative in
 [KlumAST ADR 0012](https://github.com/klum-dsl/klum-ast/blob/master/docs/adr/0012-shared-prerelease-channel-policy.md).
 This document applies that policy to KlumCast's three artifacts and registries; it does not redefine the shared policy.
 
@@ -9,7 +12,23 @@ Implementing or changing this runbook never authorizes a publication. Every RC p
 protected `release-candidate` GitHub environment. Every final publication is separately approved through the protected
 `final-release` environment. A release operator must stop if either environment lacks required reviewers.
 
-## Product and compatibility boundary
+## Maintainer path
+
+Use these as the operational sequence. The following sections give the exact commands, approval points, and recovery
+rules for each step.
+
+1. Select the exact `main` commit and intended RC/final version; complete the prerequisites and `clean check` evidence.
+2. Dispatch the protected RC or final publication workflow for that exact commit. Approval of its matching environment is
+   the required human authorization.
+3. Wait for Maven Central to expose all three artifacts, then run the credential-free public resolve-back workflow.
+4. Only after that proof passes, create the annotated tag and GitHub Release from the exact published commit.
+5. Record the completed evidence, or follow the abort/supersession rules without attempting to recover a public RC.
+
+The release workflow performs staging, signing, and the full repository gate. The public-resolution workflow proves the
+published result from clean Gradle and Maven consumers. A maintainer owns the authorization, sequencing, observation,
+tagging, GitHub Release, and evidence record; no ordinary CI job can perform those actions.
+
+## What this procedure releases
 
 One KlumCast publication consists of exactly these Maven coordinates at one identical version:
 
@@ -34,7 +53,7 @@ Release work must preserve the contracts in ADRs 0017–0020, 0022, 0024, and 00
 
 Groovy 2.4 and Java 11 belong only to the 0.3 line. They are not valid 0.4 release evidence.
 
-## Local and protected prerequisites
+## Before publishing an RC or final
 
 Before requesting authorization, confirm all of the following:
 
@@ -80,7 +99,7 @@ publication or resolve-back tasks. Sonatype staging is only the gate through whi
 identities are rejected. An RC is never relabelled or promoted; a final is a distinct publication from the accepted RC
 commit.
 
-## RC procedure
+## Publish an RC
 
 Set the evidence record's exact `<version>`, `<commit>`, and release-notes file before starting. Then perform these steps
 in order:
@@ -126,7 +145,7 @@ in order:
 7. Complete the evidence record and link it from the release issue. An RC remains a validation artifact, not the formal
    release.
 
-## Final procedure
+## Publish a final release
 
 A final release needs a new, separate authorization even when it uses the accepted RC commit.
 
