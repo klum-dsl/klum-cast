@@ -179,7 +179,6 @@ subprojects {
             withType(MavenPublication).configureEach {
                 pom {
                     name = project.name
-                    description = project.description
                     url = "https://github.com/klum-dsl/klum-cast"
                     licenses {
                         license {
@@ -206,6 +205,14 @@ subprojects {
             maven {
                 name = 'consumerTest'
                 url = rootProject.layout.buildDirectory.dir('consumer-test-repository')
+            }
+        }
+    }
+
+    afterEvaluate {
+        publishing.publications.withType(MavenPublication).configureEach {
+            pom {
+                description = project.description
             }
         }
     }
@@ -304,11 +311,15 @@ def publicConsumerWorkspaces = [3, 4, 5].collectEntries { groovyGeneration ->
 
 tasks.register('verifyPublishedMetadata') {
     group = 'verification'
-    description = 'Verifies the published annotation, SPI, and compiler POM dependency contracts.'
+    description = 'Verifies required POM metadata and dependency contracts for the published artifacts.'
     dependsOn consumerPublishTasks
+    dependsOn subprojects.collect { it.tasks.named('generatePomFileForMavenJavaPublication') }
 
     doLast {
         def publicationVersion = project.version.toString()
+        def releasePomFor = { String artifact ->
+            project(":${artifact}").layout.buildDirectory.file('publications/mavenJava/pom-default.xml').get().asFile
+        }
         def pomFor = { String artifact ->
             consumerRepository.get().file("com/blackbuild/klum/cast/${artifact}/${publicationVersion}/${artifact}-${publicationVersion}.pom")
                     .asFile
@@ -316,6 +327,14 @@ tasks.register('verifyPublishedMetadata') {
         def dependenciesFor = { String artifact ->
             new XmlSlurper().parse(pomFor(artifact)).dependencies.dependency.collect {
                 [group: it.groupId.text(), artifact: it.artifactId.text(), scope: it.scope.text()]
+            }
+        }
+
+        ['klum-cast-annotations', 'klum-cast-spi', 'klum-cast-compile'].each { artifact ->
+            def pom = new XmlSlurper().parse(releasePomFor(artifact))
+            ['name', 'description', 'url'].each { field ->
+                if (pom."${field}".text().trim().isEmpty())
+                    throw new GradleException("${artifact} publishes a blank POM ${field}")
             }
         }
 

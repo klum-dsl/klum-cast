@@ -1,6 +1,6 @@
 apply plugin: 'java-library'
 
-description 'Groovy compiler SPI for KlumCast checks and applicability filters'
+description 'KlumCast SPI for implementing annotation-use validation checks and applicability filters'
 
 dependencies {
     compileOnly rootProject.ext.groovyDependencies[3]
