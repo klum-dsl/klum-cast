@@ -99,6 +99,27 @@ publication or resolve-back tasks. Sonatype staging is only the gate through whi
 identities are rejected. An RC is never relabelled or promoted; a final is a distinct publication from the accepted RC
 commit.
 
+## Changelog version lifecycle
+
+`CHANGES.md` records one cumulative section for the projected final release rather than one section per RC. Apply these
+transitions in order:
+
+1. During development and every RC validation attempt, the maintainer keeps the active heading at the projected final
+   version, for example `0.4.0 (unreleased)`. Publishing or superseding an RC does not rename or fragment that section.
+2. For each RC, the release operator records its exact immutable `X.Y.Z-rc.N` identity in the annotated tag, GitHub
+   prerelease, and release-evidence record at the corresponding RC publication steps below. Those records identify the
+   RC; the changelog heading continues to identify the projected final release.
+3. After accepting an RC and before requesting final publication, the final-release operator creates a
+   documentation-only finalization commit that reconciles the release notes and changes the active heading to the exact
+   final version and release date, for example `0.4.0 — YYYY-MM-DD`. Record this commit as the documentation-only
+   exception permitted by KlumAST ADR 0012. Any substantive source, dependency, build, signing, publication, or workflow
+   change crosses the new-RC boundary: stop finalization and publish and validate the next increasing RC first.
+4. Immediately after the final release, the maintainer opens the next projected-version `(unreleased)` section before
+   accumulating further user-visible changes. This begins the next normal development cycle; it is not part of the
+   completed release's validated content.
+
+Until step 3 is deliberately performed for an actual final release, retain the current projected-version heading.
+
 ## Publish an RC
 
 Set the evidence record's exact `<version>`, `<commit>`, and release-notes file before starting. Then perform these steps
@@ -153,8 +174,9 @@ A final release needs a new, separate authorization even when it uses the accept
    RC commit unless subsequent changes are documentation-only. Record every such documentation-only change and why it
    does not change the validation claim. Any source, build, signing, publication, dependency, or workflow change requires
    the next RC instead.
-2. Reconcile final release notes, migration/support documentation, issues, and pull requests; run
-   `./gradlew clean check` again on the exact final commit.
+2. Perform the changelog finalization transition above: reconcile final release notes, migration/support documentation,
+   issues, and pull requests in a documentation-only commit, including the exact final version/date heading. Then run
+   `./gradlew clean check` again on that exact final commit.
 3. Request the independently protected final publication:
 
    ```text
@@ -170,6 +192,8 @@ A final release needs a new, separate authorization even when it uses the accept
    `gh release create v<X.Y.Z> --verify-tag --target <commit> --title <X.Y.Z> --notes-file <notes-file>`.
 6. Recheck the published GitHub Release, Central coordinates, issue/PR links, release notes, migration guide, and support
    matrix. Update the release issue only with the completed evidence; do not rewrite unrelated tracker state.
+7. Immediately after the final release is complete, open the next projected-version `(unreleased)` changelog section
+   before recording further user-visible changes.
 
 ## Release evidence record
 
