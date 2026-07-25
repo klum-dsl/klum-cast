@@ -43,3 +43,13 @@ _Avoid_: Runtime validation error
 An unexpected failure of a check implementation, declarative binding, or the KlumCast engine. A technical failure is not a
 diagnostic about consumer annotation usage.
 _Avoid_: Constraint violation
+
+## Documentation retention
+
+**Versioned documentation**:
+User and API documentation associated with one exact KlumCast release identity. It remains distinguishable as stable,
+prerelease, or historic and is never retrospectively rewritten.
+
+**Documentation recovery ledger**:
+The append-only record of a failed or superseded versioned-documentation attempt and its required next action. It is not a
+mechanism for repairing or exposing an immutable snapshot.
