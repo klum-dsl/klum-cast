@@ -28,6 +28,11 @@ repository-scoped Pages-writer GitHub App. It mints a short-lived token only aft
 stage, absent target path, and manifest. The service environment is credential-free and deploys the read-back ledger.
 Neither environment receives artifact-publication credentials.
 
+The future protected canonical documentation writer copies, rather than moves, the rendered snapshot into the immutable
+`gh-pages` ledger before post-push read-back proves the published tree is byte-identical. It retains the original staged
+render, exact-tree manifest, and renderer inputs unchanged until that comparison succeeds. Its implementation must retain
+a regression seam that proves this lifetime.
+
 An active `gh-pages` ruleset prevents creation, updates, deletion, and non-fast-forward changes. The Pages-writer App is
 the sole always-bypass actor; no human or `GITHUB_TOKEN` bypass is permitted. Protected writer-environment approval is
 the human authorization gate.
