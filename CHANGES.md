@@ -1,5 +1,11 @@
 # Changes
 
+## 1.0.0 (unreleased)
+
+The next planned mainline release formalizes the completed 0.4 migration line. Its scope will include the remaining
+product-finish work—such as branding, versioned documentation, and aligned release-process hardening—through their
+separately owned issues. A future `0.4.1` is reserved for a maintenance release from a 0.4 release branch if needed.
+
 ## 0.4.0 — 2026-08-12
 
 - Raised the baseline to Java 17 and replaced Groovy 2.4 support with isolated Groovy 3, 4, and 5 verification.
