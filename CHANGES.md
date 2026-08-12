@@ -1,6 +1,6 @@
 # Changes
 
-## 0.4.0 (unreleased)
+## 0.4.0 — 2026-08-12
 
 - Raised the baseline to Java 17 and replaced Groovy 2.4 support with isolated Groovy 3, 4, and 5 verification.
 - Compile the production artifacts once against Groovy 3 and verify the same publication with Gradle, Maven, classpath,
