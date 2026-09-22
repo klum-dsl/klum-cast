@@ -52,6 +52,21 @@ The SPI intentionally exposes Groovy compiler AST types such as `AnnotatedNode`,
 That is why a check implementation must explicitly compile against its chosen Groovy compiler even though
 `klum-cast-spi` does not publish a Groovy-version selector.
 
+### Navigate from a parameter to its declaration
+
+When the target is a Groovy `Parameter`, `CheckContext.getEnclosingExecutable()` supplies the `MethodNode` that owns it;
+constructor parameters return a `ConstructorNode`, which is a `MethodNode` subtype. `getDeclaringClass()` supplies that
+executable's `ClassNode`. KlumCast captures both values directly during compiler traversal and gives the same context to
+the check and its applicability filters.
+
+Both accessors return `Optional`. They are empty for non-parameter targets and for manually constructed contexts whose
+enclosing-executable argument is `null`, because a standalone `Parameter` does not identify its owner. Check and filter
+implementations should therefore branch on the optional value rather than scanning the `SourceUnit` to recover ownership.
+
+KlumCast 1.0 replaces the six-argument `CheckContext` constructor published in 0.4.0 with the owner-aware constructor.
+Code that manually constructs a context must add the enclosing `MethodNode` as the final argument, or `null` when no
+enclosing executable exists. Checks and filters that only receive a context do not require this constructor migration.
+
 ## 3. Return diagnostics, not exceptions
 
 The example returns an empty list when the method name starts with the requested prefix. Otherwise it returns a

@@ -31,6 +31,7 @@ import com.blackbuild.klum.cast.spi.Check;
 import com.blackbuild.klum.cast.spi.CheckContext;
 import org.codehaus.groovy.ast.AnnotatedNode;
 import org.codehaus.groovy.ast.AnnotationNode;
+import org.codehaus.groovy.ast.MethodNode;
 
 import java.lang.annotation.Annotation;
 import java.lang.annotation.ElementType;
@@ -41,14 +42,19 @@ import java.util.List;
 public final class FilterHandler {
     private FilterHandler() {}
 
-    static boolean isValidFor(Annotation annotation, AnnotatedNode target, String memberName, List<Annotation> path) {
+    static boolean isValidFor(Annotation annotation, AnnotatedNode target, String memberName, List<Annotation> path,
+                              MethodNode enclosingExecutable) {
         for (Method method : annotation.annotationType().getDeclaredMethods()) {
             if (!method.isAnnotationPresent(Filter.class)) continue;
             try {
                 Object value = method.invoke(annotation);
                 if (value instanceof ElementType[] && !AstSupport.matchesOneOf((ElementType[]) value, target)) return false;
-                if (value instanceof String && !((String) value).isBlank() && !newFilter((String) value, target).appliesTo(context(annotation, target, memberName, path))) return false;
-                if (value instanceof Class && !value.equals(KlumCastValidator.None.class) && !newFilter((Class<?>) value).appliesTo(context(annotation, target, memberName, path))) return false;
+                if (value instanceof String && !((String) value).isBlank()
+                        && !newFilter((String) value, target, enclosingExecutable).appliesTo(
+                                context(annotation, target, memberName, path, enclosingExecutable))) return false;
+                if (value instanceof Class && !value.equals(KlumCastValidator.None.class)
+                        && !newFilter((Class<?>) value).appliesTo(
+                                context(annotation, target, memberName, path, enclosingExecutable))) return false;
             } catch (ReflectiveOperationException exception) {
                 throw new IllegalStateException("Could not resolve applicability filter " + method.getName(), exception);
             }
@@ -61,8 +67,9 @@ public final class FilterHandler {
         return true;
     }
 
-    private static ApplicabilityFilter newFilter(String name, AnnotatedNode target) {
-        try { return newFilter(Class.forName(name, true, AstSupport.getTargetClassLoader(target))); }
+    private static ApplicabilityFilter newFilter(String name, AnnotatedNode target, MethodNode enclosingExecutable) {
+        AnnotatedNode classLoaderTarget = enclosingExecutable == null ? target : enclosingExecutable;
+        try { return newFilter(Class.forName(name, true, AstSupport.getTargetClassLoader(classLoaderTarget))); }
         catch (ClassNotFoundException exception) { throw new IllegalStateException("Could not load filter " + name, exception); }
     }
 
@@ -74,10 +81,12 @@ public final class FilterHandler {
         catch (ReflectiveOperationException exception) { throw new IllegalStateException("Could not instantiate filter " + candidate.getName(), exception); }
     }
 
-    private static CheckContext context(Annotation declaration, AnnotatedNode target, String memberName, List<Annotation> path) {
+    private static CheckContext context(Annotation declaration, AnnotatedNode target, String memberName,
+                                        List<Annotation> path, MethodNode enclosingExecutable) {
         AnnotationNode placeholder = new AnnotationNode(org.codehaus.groovy.ast.ClassHelper.make(declaration.annotationType()));
         return new CheckContext(placeholder, target, declaration, memberName,
-                new BindingMetadata(declaration, NoopCheck.class, NoopCheck.class.getName()), path);
+                new BindingMetadata(declaration, NoopCheck.class, NoopCheck.class.getName()), path,
+                enclosingExecutable);
     }
 
     private static final class NoopCheck implements Check {

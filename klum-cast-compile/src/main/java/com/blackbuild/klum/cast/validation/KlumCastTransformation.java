@@ -84,9 +84,13 @@ public class KlumCastTransformation extends AbstractASTTransformation implements
     }
 
     protected void visitAnnotations(AnnotatedNode node) {
+        visitAnnotations(node, null);
+    }
+
+    private void visitAnnotations(AnnotatedNode node, MethodNode enclosingExecutable) {
         for (AnnotationNode annotation : node.getAnnotations())
             if (isKlumCastAnnotation(annotation))
-                ValidationHandler.validateAnnotation(annotation, node)
+                ValidationHandler.validateAnnotation(annotation, node, enclosingExecutable)
                         .forEach(diagnostic -> addError(renderDiagnostic(diagnostic), diagnostic.getPrimaryNode()));
     }
 
@@ -134,7 +138,7 @@ public class KlumCastTransformation extends AbstractASTTransformation implements
     protected void visitConstructorOrMethod(MethodNode node) {
         visitAnnotations(node);
         for (Parameter param : node.getParameters()) {
-            visitAnnotations(param);
+            visitAnnotations(param, node);
         }
     }
 

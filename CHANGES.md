@@ -6,6 +6,12 @@ The next planned mainline release formalizes the completed 0.4 migration line. I
 product-finish work—such as branding, versioned documentation, and aligned release-process hardening—through their
 separately owned issues. A future `0.4.1` is reserved for a maintenance release from a 0.4 release branch if needed.
 
+- **Breaking:** Replaced the six-argument `CheckContext` constructor published in 0.4.0 with one owner-aware constructor.
+  Manually constructed contexts must add the enclosing `MethodNode`, or `null` when none exists.
+- Added optional `CheckContext` navigation from a parameter target to its enclosing method or constructor and declaring
+  class. Checks and applicability filters receive the same captured declaration context; non-parameter targets and
+  manually constructed contexts without an owner retain deterministic empty navigation.
+
 ## 0.4.0 — 2026-08-12
 
 - Raised the baseline to Java 17 and replaced Groovy 2.4 support with isolated Groovy 3, 4, and 5 verification.
