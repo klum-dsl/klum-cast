@@ -25,6 +25,8 @@ package com.blackbuild.klum.cast.spi;
 
 import org.codehaus.groovy.ast.AnnotatedNode;
 import org.codehaus.groovy.ast.AnnotationNode;
+import org.codehaus.groovy.ast.ClassNode;
+import org.codehaus.groovy.ast.MethodNode;
 
 import java.lang.annotation.Annotation;
 import java.util.List;
@@ -46,15 +48,51 @@ public final class CheckContext {
     private final String memberName;
     private final BindingMetadata binding;
     private final List<Annotation> compositionPath;
+    private final MethodNode enclosingExecutable;
+    private final ClassNode declaringClass;
 
+    /**
+     * Creates a context without enclosing-executable navigation.
+     *
+     * <p>This constructor is retained for compatibility with consumers that construct contexts directly. Because a
+     * {@link org.codehaus.groovy.ast.Parameter Parameter} does not identify its owner, contexts created this way report
+     * empty {@linkplain #getEnclosingExecutable() enclosing-executable} and
+     * {@linkplain #getDeclaringClass() declaring-class} navigation.</p>
+     *
+     * @param validatedAnnotation use of the validated annotation
+     * @param target node on which the validated annotation is used
+     * @param controlAnnotation applicable control annotation, or {@code null}
+     * @param memberName validated annotation member, or {@code null} for annotation-level validation
+     * @param binding binding that selected the check
+     * @param compositionPath ordered annotations through which the binding was reached
+     */
     public CheckContext(AnnotationNode validatedAnnotation, AnnotatedNode target, Annotation controlAnnotation,
                         String memberName, BindingMetadata binding, List<Annotation> compositionPath) {
+        this(validatedAnnotation, target, controlAnnotation, memberName, binding, compositionPath, null);
+    }
+
+    /**
+     * Creates a context with optional enclosing-executable navigation captured by the compiler traversal.
+     *
+     * @param validatedAnnotation use of the validated annotation
+     * @param target node on which the validated annotation is used
+     * @param controlAnnotation applicable control annotation, or {@code null}
+     * @param memberName validated annotation member, or {@code null} for annotation-level validation
+     * @param binding binding that selected the check
+     * @param compositionPath ordered annotations through which the binding was reached
+     * @param enclosingExecutable method or constructor enclosing the target, or {@code null} when none was captured
+     */
+    public CheckContext(AnnotationNode validatedAnnotation, AnnotatedNode target, Annotation controlAnnotation,
+                        String memberName, BindingMetadata binding, List<Annotation> compositionPath,
+                        MethodNode enclosingExecutable) {
         this.validatedAnnotation = Objects.requireNonNull(validatedAnnotation, "validatedAnnotation");
         this.target = Objects.requireNonNull(target, "target");
         this.controlAnnotation = controlAnnotation;
         this.memberName = memberName;
         this.binding = Objects.requireNonNull(binding, "binding");
         this.compositionPath = List.copyOf(compositionPath);
+        this.enclosingExecutable = enclosingExecutable;
+        this.declaringClass = enclosingExecutable == null ? null : enclosingExecutable.getDeclaringClass();
     }
 
     /** @return the use of the validated annotation being checked */
@@ -94,4 +132,25 @@ public final class CheckContext {
 
     /** @return immutable ordered annotations through which the binding was reached */
     public List<Annotation> getCompositionPath() { return compositionPath; }
+
+    /**
+     * Returns the method or constructor enclosing a parameter target.
+     *
+     * <p>A constructor is represented by a {@link org.codehaus.groovy.ast.ConstructorNode ConstructorNode}, which is a
+     * {@link MethodNode}. KlumCast populates this value directly while visiting parameters. It is empty for
+     * non-parameter targets and contexts created with the compatibility constructor.</p>
+     *
+     * @return the enclosing method or constructor, when captured
+     */
+    public Optional<MethodNode> getEnclosingExecutable() { return Optional.ofNullable(enclosingExecutable); }
+
+    /**
+     * Returns the class declaring the captured enclosing method or constructor.
+     *
+     * <p>This value is empty whenever {@link #getEnclosingExecutable()} is empty or the captured executable has no
+     * declaring class.</p>
+     *
+     * @return the declaring class of the enclosing executable, when available
+     */
+    public Optional<ClassNode> getDeclaringClass() { return Optional.ofNullable(declaringClass); }
 }

@@ -38,6 +38,7 @@ import com.blackbuild.klum.cast.checks.impl.KlumCastCheck;
 import org.codehaus.groovy.ast.AnnotatedNode;
 import org.codehaus.groovy.ast.AnnotationNode;
 import org.codehaus.groovy.ast.ASTNode;
+import org.codehaus.groovy.ast.MethodNode;
 
 import java.lang.annotation.Annotation;
 import java.lang.reflect.AnnotatedElement;
@@ -60,6 +61,7 @@ public class ValidationHandler {
 
     private final AnnotationNode annotationToValidate;
     private final AnnotatedNode target;
+    private final MethodNode enclosingExecutable;
     private final List<Diagnostic> diagnostics = new ArrayList<>();
     private final List<Annotation> compositionPath = new ArrayList<>();
     private String currentMember;
@@ -68,8 +70,13 @@ public class ValidationHandler {
     public static final String METADATA_KEY = ValidationHandler.class.getName();
 
     ValidationHandler(AnnotationNode annotationToValidate, AnnotatedNode target) {
+        this(annotationToValidate, target, null);
+    }
+
+    ValidationHandler(AnnotationNode annotationToValidate, AnnotatedNode target, MethodNode enclosingExecutable) {
         this.annotationToValidate = annotationToValidate;
         this.target = target;
+        this.enclosingExecutable = enclosingExecutable;
     }
 
     public static boolean alreadyValidated(AnnotationNode annotationNode) {
@@ -81,12 +88,17 @@ public class ValidationHandler {
     }
 
     public static List<Diagnostic> validateAnnotation(AnnotationNode annotationToValidate, AnnotatedNode target) {
+        return validateAnnotation(annotationToValidate, target, null);
+    }
+
+    static List<Diagnostic> validateAnnotation(AnnotationNode annotationToValidate, AnnotatedNode target,
+                                               MethodNode enclosingExecutable) {
         if (alreadyValidated(annotationToValidate)) return Collections.emptyList();
         if (!annotationToValidate.getClassNode().isResolved()) {
             return Collections.singletonList(new Diagnostic("klum-cast.unresolved-annotation",
                     "Validated annotation must have already been compiled", annotationToValidate));
         }
-        return new ValidationHandler(annotationToValidate, target).validate();
+        return new ValidationHandler(annotationToValidate, target, enclosingExecutable).validate();
     }
 
     private List<Diagnostic> validate() {
@@ -121,7 +133,7 @@ public class ValidationHandler {
     }
 
     InvocationOutcome handleSingleAnnotation(Annotation annotation) {
-        if (!FilterHandler.isValidFor(annotation, target, currentMember, compositionPath)) {
+        if (!FilterHandler.isValidFor(annotation, target, currentMember, compositionPath, enclosingExecutable)) {
             return InvocationOutcome.NOT_APPLICABLE;
         }
         compositionPath.add(annotation);
@@ -177,7 +189,8 @@ public class ValidationHandler {
         Class<? extends Check> checkType = candidate.asSubclass(Check.class);
         BindingMetadata metadata = new BindingMetadata(declaration, checkType, implementationName);
         Annotation control = findControlAnnotation();
-        CheckContext context = new CheckContext(annotationToValidate, target, control, currentMember, metadata, compositionPath);
+        CheckContext context = new CheckContext(annotationToValidate, target, control, currentMember, metadata,
+                compositionPath, enclosingExecutable);
         if (!FilterHandler.areApplicable(filterTypes, context)) return InvocationOutcome.NOT_APPLICABLE;
         try {
             Check check = checkType.getDeclaredConstructor().newInstance();
@@ -337,7 +350,8 @@ public class ValidationHandler {
     }
 
     private Class<?> load(String name) {
-        try { return Class.forName(name, true, AstSupport.getTargetClassLoader(target)); }
+        AnnotatedNode classLoaderTarget = enclosingExecutable == null ? target : enclosingExecutable;
+        try { return Class.forName(name, true, AstSupport.getTargetClassLoader(classLoaderTarget)); }
         catch (ClassNotFoundException exception) { throw new IllegalStateException("Could not load check " + name, exception); }
     }
 
