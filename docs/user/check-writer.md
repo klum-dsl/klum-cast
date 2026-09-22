@@ -59,9 +59,13 @@ constructor parameters return a `ConstructorNode`, which is a `MethodNode` subty
 executable's `ClassNode`. KlumCast captures both values directly during compiler traversal and gives the same context to
 the check and its applicability filters.
 
-Both accessors return `Optional`. They are empty for non-parameter targets and for contexts created with the original
-six-argument `CheckContext` constructor, because a standalone `Parameter` does not identify its owner. Check and filter
+Both accessors return `Optional`. They are empty for non-parameter targets and for manually constructed contexts whose
+enclosing-executable argument is `null`, because a standalone `Parameter` does not identify its owner. Check and filter
 implementations should therefore branch on the optional value rather than scanning the `SourceUnit` to recover ownership.
+
+KlumCast 1.0 replaces the six-argument `CheckContext` constructor published in 0.4.0 with the owner-aware constructor.
+Code that manually constructs a context must add the enclosing `MethodNode` as the final argument, or `null` when no
+enclosing executable exists. Checks and filters that only receive a context do not require this constructor migration.
 
 ## 3. Return diagnostics, not exceptions
 

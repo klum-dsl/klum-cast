@@ -52,27 +52,11 @@ public final class CheckContext {
     private final ClassNode declaringClass;
 
     /**
-     * Creates a context without enclosing-executable navigation.
-     *
-     * <p>This constructor is retained for compatibility with consumers that construct contexts directly. Because a
-     * {@link org.codehaus.groovy.ast.Parameter Parameter} does not identify its owner, contexts created this way report
-     * empty {@linkplain #getEnclosingExecutable() enclosing-executable} and
-     * {@linkplain #getDeclaringClass() declaring-class} navigation.</p>
-     *
-     * @param validatedAnnotation use of the validated annotation
-     * @param target node on which the validated annotation is used
-     * @param controlAnnotation applicable control annotation, or {@code null}
-     * @param memberName validated annotation member, or {@code null} for annotation-level validation
-     * @param binding binding that selected the check
-     * @param compositionPath ordered annotations through which the binding was reached
-     */
-    public CheckContext(AnnotationNode validatedAnnotation, AnnotatedNode target, Annotation controlAnnotation,
-                        String memberName, BindingMetadata binding, List<Annotation> compositionPath) {
-        this(validatedAnnotation, target, controlAnnotation, memberName, binding, compositionPath, null);
-    }
-
-    /**
      * Creates a context with optional enclosing-executable navigation captured by the compiler traversal.
+     *
+     * <p>Pass {@code null} when the target has no enclosing executable. Because a
+     * {@link org.codehaus.groovy.ast.Parameter Parameter} does not identify its owner, callers that manually construct
+     * a parameter context must supply that owner explicitly to provide declaration navigation.</p>
      *
      * @param validatedAnnotation use of the validated annotation
      * @param target node on which the validated annotation is used
@@ -138,7 +122,7 @@ public final class CheckContext {
      *
      * <p>A constructor is represented by a {@link org.codehaus.groovy.ast.ConstructorNode ConstructorNode}, which is a
      * {@link MethodNode}. KlumCast populates this value directly while visiting parameters. It is empty for
-     * non-parameter targets and contexts created with the compatibility constructor.</p>
+     * non-parameter targets and manually constructed contexts that pass no enclosing executable.</p>
      *
      * @return the enclosing method or constructor, when captured
      */

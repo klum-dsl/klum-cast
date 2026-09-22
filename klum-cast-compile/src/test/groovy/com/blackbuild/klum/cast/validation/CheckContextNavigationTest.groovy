@@ -124,7 +124,7 @@ class ParameterTarget {
         ]
     }
 
-    def "legacy context construction leaves declaration navigation empty"() {
+    def "manual context construction without an owner leaves declaration navigation empty"() {
         given:
         def declaration = LegacyNavigationBinding.getAnnotation(CheckBinding)
         def context = new CheckContext(
@@ -133,7 +133,8 @@ class ParameterTarget {
                 null,
                 null,
                 new BindingMetadata(declaration, LegacyNavigationCheck, LegacyNavigationCheck.name),
-                []
+                [],
+                null
         )
 
         expect:

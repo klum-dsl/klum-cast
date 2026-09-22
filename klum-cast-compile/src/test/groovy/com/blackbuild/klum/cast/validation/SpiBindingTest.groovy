@@ -351,7 +351,7 @@ class StructuredTarget {}
     private static CheckContext legacyContext(String member, CheckBinding binding) {
         def control = LegacyUse.getAnnotation(LegacyControl)
         new CheckContext(new AnnotationNode(ClassHelper.make(SpiBindingTest)), ClassHelper.make(SpiBindingTest), control,
-                member, new BindingMetadata(binding, LegacyAdapterCheck, 'legacy'), [control, binding])
+                member, new BindingMetadata(binding, LegacyAdapterCheck, 'legacy'), [control, binding], null)
     }
 
 }
