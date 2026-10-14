@@ -43,14 +43,14 @@ public final class FilterHandler {
     private FilterHandler() {}
 
     static boolean isValidFor(Annotation annotation, AnnotatedNode target, String memberName, List<Annotation> path,
-                              MethodNode enclosingExecutable) {
+                              MethodNode enclosingExecutable, ClassLoader implementationLoader) {
         for (Method method : annotation.annotationType().getDeclaredMethods()) {
             if (!method.isAnnotationPresent(Filter.class)) continue;
             try {
                 Object value = method.invoke(annotation);
                 if (value instanceof ElementType[] && !AstSupport.matchesOneOf((ElementType[]) value, target)) return false;
                 if (value instanceof String && !((String) value).isBlank()
-                        && !newFilter((String) value, target, enclosingExecutable).appliesTo(
+                        && !newFilter((String) value, target, enclosingExecutable, implementationLoader).appliesTo(
                                 context(annotation, target, memberName, path, enclosingExecutable))) return false;
                 if (value instanceof Class && !value.equals(KlumCastValidator.None.class)
                         && !newFilter((Class<?>) value).appliesTo(
@@ -67,9 +67,11 @@ public final class FilterHandler {
         return true;
     }
 
-    private static ApplicabilityFilter newFilter(String name, AnnotatedNode target, MethodNode enclosingExecutable) {
+    private static ApplicabilityFilter newFilter(String name, AnnotatedNode target, MethodNode enclosingExecutable,
+                                                 ClassLoader implementationLoader) {
         AnnotatedNode classLoaderTarget = enclosingExecutable == null ? target : enclosingExecutable;
-        try { return newFilter(Class.forName(name, true, AstSupport.getTargetClassLoader(classLoaderTarget))); }
+        ClassLoader loader = implementationLoader == null ? AstSupport.getTargetClassLoader(classLoaderTarget) : implementationLoader;
+        try { return newFilter(Class.forName(name, true, loader)); }
         catch (ClassNotFoundException exception) { throw new IllegalStateException("Could not load filter " + name, exception); }
     }
 

@@ -31,8 +31,10 @@ import com.blackbuild.klum.cast.compiler.EffectiveDeclarationContribution;
 import com.blackbuild.klum.cast.compiler.EffectiveDeclarationContributor;
 import com.blackbuild.klum.cast.spi.CheckBinding;
 import com.blackbuild.klum.cast.spi.Diagnostic;
+import groovy.transform.CompilationUnitAware;
 import org.codehaus.groovy.ast.*;
 import org.codehaus.groovy.ast.expr.Expression;
+import org.codehaus.groovy.control.CompilationUnit;
 import org.codehaus.groovy.control.CompilePhase;
 import org.codehaus.groovy.control.SourceUnit;
 import org.codehaus.groovy.transform.AbstractASTTransformation;
@@ -55,7 +57,7 @@ import java.util.stream.Collectors;
  */
 
 @GroovyASTTransformation(phase = CompilePhase.SEMANTIC_ANALYSIS)
-public class KlumCastTransformation extends AbstractASTTransformation implements GroovyClassVisitor {
+public class KlumCastTransformation extends AbstractASTTransformation implements GroovyClassVisitor, CompilationUnitAware {
 
     static final ClassNode KLUM_CAST_VALIDATED = make(KlumCastValidated.class);
     static final ClassNode KLUM_CAST_VALIDATOR = make(KlumCastValidator.class);
@@ -64,11 +66,18 @@ public class KlumCastTransformation extends AbstractASTTransformation implements
     private static final Object EFFECTIVE_DECLARATION_STATE = KlumCastTransformation.class.getName() + ".effectiveDeclarationState";
 
     private List<EffectiveDeclarationContributor> contributors = List.of();
+    private ClassLoader transformLoader = EffectiveDeclarationContributor.class.getClassLoader();
+
+    @Override
+    public void setCompilationUnit(CompilationUnit unit) {
+        // Gradle isolates source resolution from AST transformations. Providers must share the transform's API identity.
+        transformLoader = unit.getTransformLoader();
+    }
 
     @Override
     public void visit(ASTNode[] nodes, SourceUnit source) {
         this.sourceUnit = source;
-        contributors = ServiceLoader.load(EffectiveDeclarationContributor.class, source.getClassLoader()).stream()
+        contributors = ServiceLoader.load(EffectiveDeclarationContributor.class, transformLoader).stream()
                 .map(ServiceLoader.Provider::get)
                 .sorted(Comparator.comparing(contributor -> contributor.getClass().getName()))
                 .collect(Collectors.toList());
@@ -117,7 +126,7 @@ public class KlumCastTransformation extends AbstractASTTransformation implements
 
         for (AnnotationNode annotation : node.getAnnotations())
             if (isKlumCastAnnotation(annotation))
-                ValidationHandler.validateEffectiveAnnotation(annotation, node, enclosingExecutable)
+                ValidationHandler.validateEffectiveAnnotation(annotation, node, enclosingExecutable, transformLoader)
                         .forEach(diagnostic -> addError(renderDiagnostic(diagnostic, effectiveAnnotations), diagnostic.getPrimaryNode()));
         node.setNodeMetaData(EFFECTIVE_DECLARATION_STATE, new EffectiveDeclarationState(node.getAnnotations()));
     }

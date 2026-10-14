@@ -117,7 +117,10 @@ properties are not visited separately because their field or accessor annotation
 A consumer transformation that depends on successful validation must perform its main mutation during
 `CANONICALIZATION` or later. Ordering against another `SEMANTIC_ANALYSIS` transformation is not guaranteed. A compiler
 integration that must supply one authorized annotation-addition batch before KlumCast validates a declaration can
-register an `EffectiveDeclarationContributor` from the compile artifact with Java service loading. That narrow
+register an `EffectiveDeclarationContributor` from the compile artifact with Java service loading. Put its separately
+compiled provider and service descriptor on the AST-transformation classpath (the ordinary Groovy compile classpath in
+Gradle). KlumCast discovers providers with Groovy's transform loader, preserving the contributor interface identity
+when the build tool separates source and transform loaders. That narrow
 handoff is not a transformation scheduler: KlumCast retains traversal, validation state, constraint execution, and
 diagnostic rendering. KlumCast invokes contributors once for that declaration, attaches their complete batches, and
 validates the resulting effective declaration once. Unchanged revisits do not invoke contributors again. An addition

@@ -372,6 +372,29 @@ tasks.register('verifyPublishedMetadata') {
     }
 }
 
+// Ordinary GroovyCompile uses distinct source and AST-transform loaders in Gradle.
+[3, 4, 5].each { generation ->
+    def workspace = layout.buildDirectory.dir("contributor-workspaces/contributor-groovy${generation}")
+    def prepare = tasks.register("prepareContributorWorkspaceGroovy${generation}", Sync) {
+        from layout.projectDirectory.dir('docs/implementation/fixtures/gradle-contributor')
+        into workspace
+    }
+    tasks.register("verifyGradleContributorGroovy${generation}", GradleBuild) {
+        dependsOn consumerPublishTasks, prepare
+        dir = workspace.get().asFile
+        tasks = ['clean', 'verifyContributor']
+        startParameter.projectProperties = [
+                klumCastVersion: project.version.toString(),
+                fixtureRepository: consumerRepository.get().asFile.absolutePath,
+                groovyGroup: generation == 3 ? 'org.codehaus.groovy' : 'org.apache.groovy',
+                groovyVersion: rootProject.ext.groovyVersions[generation].toString()
+        ]
+    }
+}
+tasks.named('check') {
+    dependsOn([3, 4, 5].collect { tasks.named("verifyGradleContributorGroovy${it}") })
+}
+
 def installMaven = tasks.register('installMaven', Sync) {
     group = 'build setup'
     description = 'Installs the pinned Maven distribution used by published-consumer verification.'

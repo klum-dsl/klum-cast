@@ -1,0 +1,68 @@
+plugins {
+    id 'groovy'
+}
+
+def castVersion = providers.gradleProperty('klumCastVersion').get()
+def groovyGroup = providers.gradleProperty('groovyGroup').get()
+def groovyVersion = providers.gradleProperty('groovyVersion').get()
+repositories {
+    maven { url = uri(providers.gradleProperty('fixtureRepository').get()) }
+    mavenCentral()
+}
+java {
+    toolchain { languageVersion = JavaLanguageVersion.of(17) }
+}
+sourceSets {
+    foreign
+    provider
+    noService
+    noOp
+    effective
+}
+configurations { compiler }
+dependencies {
+    compiler "${groovyGroup}:groovy:${groovyVersion}"
+    foreignImplementation "${groovyGroup}:groovy:${groovyVersion}"
+    foreignImplementation "com.blackbuild.klum.cast:klum-cast-compile:${castVersion}"
+    providerImplementation "${groovyGroup}:groovy:${groovyVersion}"
+    providerImplementation "com.blackbuild.klum.cast:klum-cast-compile:${castVersion}"
+    providerImplementation sourceSets.foreign.output
+}
+def foreignJar = tasks.register('foreignJar', Jar) {
+    archiveClassifier = 'foreign'
+    from sourceSets.foreign.output
+}
+['noService', 'noOp', 'effective'].each { mode ->
+    def serviceDirectory = layout.buildDirectory.dir("services/${mode}")
+    def service = tasks.register("prepare${mode.capitalize()}Service") {
+        outputs.dir(serviceDirectory)
+        doLast {
+            def descriptor = serviceDirectory.get().file('META-INF/services/com.blackbuild.klum.cast.compiler.EffectiveDeclarationContributor').asFile
+            descriptor.parentFile.mkdirs()
+            descriptor.text = mode == 'noOp' ? 'probe.NoOpContributor\n' : 'probe.AddingContributor\n'
+        }
+    }
+    def providerJar = tasks.register("${mode}ProviderJar", Jar) {
+        archiveClassifier = mode
+        from sourceSets.provider.output
+        if (mode != 'noService') {
+            dependsOn service
+            from serviceDirectory
+        }
+    }
+    dependencies {
+        add("${mode}Implementation", "${groovyGroup}:groovy:${groovyVersion}")
+        add("${mode}Implementation", "com.blackbuild.klum.cast:klum-cast-compile:${castVersion}")
+        add("${mode}Implementation", files(foreignJar))
+        add("${mode}Implementation", files(providerJar))
+    }
+    tasks.named("compile${mode.capitalize()}Groovy", GroovyCompile) {
+        groovyClasspath = configurations.compiler
+    }
+}
+tasks.register('verifyContributor', JavaExec) {
+    dependsOn tasks.named('noServiceClasses'), tasks.named('noOpClasses'), tasks.named('effectiveClasses')
+    classpath = sourceSets.effective.runtimeClasspath
+    mainClass = 'probe.EffectiveTarget'
+    javaLauncher = javaToolchains.launcherFor { languageVersion = JavaLanguageVersion.of(17) }
+}

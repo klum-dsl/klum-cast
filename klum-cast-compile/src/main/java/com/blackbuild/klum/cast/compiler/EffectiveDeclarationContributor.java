@@ -26,8 +26,10 @@ package com.blackbuild.klum.cast.compiler;
 /**
  * Supplies an authorized, complete annotation-addition batch before KlumCast validates one declaration.
  *
- * <p>Register providers with Java's {@link java.util.ServiceLoader} in the compilation class path. KlumCast invokes
- * each provider while visiting a declaration during semantic analysis, before it discovers or evaluates constraints.
+ * <p>Register providers with Java's {@link java.util.ServiceLoader} in the AST-transformation class path (the ordinary
+ * Groovy compile class path in Gradle). KlumCast discovers providers with the compilation unit's transform loader so
+ * that the provider and compiler share this interface's class identity. KlumCast invokes each provider while visiting
+ * a declaration during semantic analysis, before it discovers or evaluates constraints.
  * A provider returns additions only; KlumCast attaches them, owns the resulting effective declaration, and performs
  * validation, diagnostic aggregation, and rendering. Providers must not validate annotations themselves, schedule
  * compiler work, or mutate the declaration directly or after this method returns.</p>
