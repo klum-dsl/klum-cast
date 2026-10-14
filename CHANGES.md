@@ -11,6 +11,9 @@ separately owned issues. A future `0.4.1` is reserved for a maintenance release 
 - Added optional `CheckContext` navigation from a parameter target to its enclosing method or constructor and declaring
   class. Checks and applicability filters receive the same captured declaration context; non-parameter targets and
   manually constructed contexts without an owner retain deterministic empty navigation.
+- Added the compile-artifact `EffectiveDeclarationContributor` service contract for one complete, provenance-carrying
+  effective-annotation batch before KlumCast validates a declaration. KlumCast retains final declaration state,
+  rechecks affected constraints as one effective set, and emits each resulting diagnostic once.
 
 ## 0.4.0 — 2026-08-12
 

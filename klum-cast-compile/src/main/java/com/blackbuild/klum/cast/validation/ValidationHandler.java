@@ -94,6 +94,11 @@ public class ValidationHandler {
     static List<Diagnostic> validateAnnotation(AnnotationNode annotationToValidate, AnnotatedNode target,
                                                MethodNode enclosingExecutable) {
         if (alreadyValidated(annotationToValidate)) return Collections.emptyList();
+        return validateEffectiveAnnotation(annotationToValidate, target, enclosingExecutable);
+    }
+
+    static List<Diagnostic> validateEffectiveAnnotation(AnnotationNode annotationToValidate, AnnotatedNode target,
+                                                         MethodNode enclosingExecutable) {
         if (!annotationToValidate.getClassNode().isResolved()) {
             return Collections.singletonList(new Diagnostic("klum-cast.unresolved-annotation",
                     "Validated annotation must have already been compiled", annotationToValidate));
