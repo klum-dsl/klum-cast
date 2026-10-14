@@ -1,0 +1,44 @@
+// Opt-in RC qualification probe. Never apply to publication or ordinary builds.
+def inputs = gradle.startParameter.projectProperties
+def castVersion = inputs.castCandidateVersion
+// Gradle also evaluates init scripts for buildSrc, without the root project properties.
+if (!castVersion) return
+if (!inputs.castCandidateRepository)
+    throw new GradleException('Supply castCandidateVersion and castCandidateRepository')
+def castModules = ['klum-cast-annotations', 'klum-cast-spi', 'klum-cast-compile']
+gradle.beforeProject { p ->
+    p.repositories.exclusiveContent {
+        forRepository { p.repositories.maven { url = uri(inputs.castCandidateRepository) } }
+        filter { includeGroup('com.blackbuild.klum.cast') }
+    }
+    p.repositories.mavenCentral()
+    p.configurations.configureEach {
+        resolutionStrategy.eachDependency { details ->
+            if (details.requested.group == 'com.blackbuild.klum.cast' && details.requested.name in castModules)
+                details.useVersion(castVersion)
+        }
+    }
+}
+gradle.projectsEvaluated {
+    def compiler = gradle.rootProject.findProject(':klum-ast')
+    if (compiler == null) return
+    def evidence = compiler.rootProject.file('docs/implementation/evidence/issue-890/ap1-gradle-service')
+    if (!compiler.providers.gradleProperty('ap1NoService').isPresent()) {
+        compiler.sourceSets.main.java.srcDir(new File(evidence, 'java'))
+        compiler.sourceSets.main.resources.srcDir(new File(evidence, 'resources'))
+    }
+    compiler.tasks.register('verifyAp1GradleResolution') {
+        doLast {
+            ['compileClasspath', 'testFixturesCompileClasspath', 'groovy4TestsCompileClasspath', 'groovy5TestsCompileClasspath'].each { name ->
+                def artifacts = compiler.configurations[name].resolvedConfiguration.resolvedArtifacts.findAll {
+                    it.moduleVersion.id.group == 'com.blackbuild.klum.cast'
+                }
+                assert artifacts*.name.toSet() == castModules.toSet()
+                artifacts.each {
+                    assert it.moduleVersion.id.version == castVersion
+                    assert !it.file.canonicalPath.startsWith(new File(System.getProperty('user.home'), '.m2/repository').canonicalPath)
+                }
+            }
+        }
+    }
+}

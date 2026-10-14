@@ -62,6 +62,7 @@ public class ValidationHandler {
     private final AnnotationNode annotationToValidate;
     private final AnnotatedNode target;
     private final MethodNode enclosingExecutable;
+    private final ClassLoader implementationLoader;
     private final List<Diagnostic> diagnostics = new ArrayList<>();
     private final List<Annotation> compositionPath = new ArrayList<>();
     private String currentMember;
@@ -74,9 +75,15 @@ public class ValidationHandler {
     }
 
     ValidationHandler(AnnotationNode annotationToValidate, AnnotatedNode target, MethodNode enclosingExecutable) {
+        this(annotationToValidate, target, enclosingExecutable, null);
+    }
+
+    private ValidationHandler(AnnotationNode annotationToValidate, AnnotatedNode target, MethodNode enclosingExecutable,
+                              ClassLoader implementationLoader) {
         this.annotationToValidate = annotationToValidate;
         this.target = target;
         this.enclosingExecutable = enclosingExecutable;
+        this.implementationLoader = implementationLoader;
     }
 
     public static boolean alreadyValidated(AnnotationNode annotationNode) {
@@ -106,21 +113,38 @@ public class ValidationHandler {
      */
     static List<Diagnostic> validateEffectiveAnnotation(AnnotationNode annotationToValidate, AnnotatedNode target,
                                                          MethodNode enclosingExecutable) {
+        return validateEffectiveAnnotation(annotationToValidate, target, enclosingExecutable, null);
+    }
+
+    static List<Diagnostic> validateEffectiveAnnotation(AnnotationNode annotationToValidate, AnnotatedNode target,
+                                                        MethodNode enclosingExecutable, ClassLoader implementationLoader) {
         if (!annotationToValidate.getClassNode().isResolved()) {
             return Collections.singletonList(new Diagnostic("klum-cast.unresolved-annotation",
                     "Validated annotation must have already been compiled", annotationToValidate));
         }
-        return new ValidationHandler(annotationToValidate, target, enclosingExecutable).validate();
+        return new ValidationHandler(annotationToValidate, target, enclosingExecutable, implementationLoader).validate();
     }
 
     private List<Diagnostic> validate() {
-        validate(annotationToValidate.getClassNode().getTypeClass());
-        Arrays.stream(annotationToValidate.getClassNode().getTypeClass().getDeclaredMethods())
+        Class<?> annotationType = annotationType();
+        validate(annotationType);
+        Arrays.stream(annotationType.getDeclaredMethods())
                 .filter(method -> annotationToValidate.getMember(method.getName()) != null)
                 .sorted(Comparator.comparing(Method::getName))
                 .forEach(this::validateMember);
         setStatus(annotationToValidate, Status.VALIDATED);
         return diagnostics;
+    }
+
+    private Class<?> annotationType() {
+        Class<?> sourceType = annotationToValidate.getClassNode().getTypeClass();
+        if (implementationLoader == null) return sourceType;
+        // Reflect metadata in the same loader as Check/CheckBinding; retain the original AST for context and diagnostics.
+        try { return Class.forName(sourceType.getName(), false, implementationLoader); }
+        catch (ClassNotFoundException exception) {
+            throw new IllegalStateException("Could not load validated annotation " + sourceType.getName()
+                    + " through the AST-transform loader", exception);
+        }
     }
 
     private void validateMember(Method method) {
@@ -145,7 +169,7 @@ public class ValidationHandler {
     }
 
     InvocationOutcome handleSingleAnnotation(Annotation annotation) {
-        if (!FilterHandler.isValidFor(annotation, target, currentMember, compositionPath, enclosingExecutable)) {
+        if (!FilterHandler.isValidFor(annotation, target, currentMember, compositionPath, enclosingExecutable, implementationLoader)) {
             return InvocationOutcome.NOT_APPLICABLE;
         }
         compositionPath.add(annotation);
@@ -363,7 +387,8 @@ public class ValidationHandler {
 
     private Class<?> load(String name) {
         AnnotatedNode classLoaderTarget = enclosingExecutable == null ? target : enclosingExecutable;
-        try { return Class.forName(name, true, AstSupport.getTargetClassLoader(classLoaderTarget)); }
+        ClassLoader loader = implementationLoader == null ? AstSupport.getTargetClassLoader(classLoaderTarget) : implementationLoader;
+        try { return Class.forName(name, true, loader); }
         catch (ClassNotFoundException exception) { throw new IllegalStateException("Could not load check " + name, exception); }
     }
 

@@ -18,6 +18,11 @@ from a 0.4 release branch if needed.
   validates the resulting effective set once, rejects duplicate contributed annotation types, and emits each resulting
   diagnostic once.
 
+- Corrected contributor discovery to use Groovy's AST-transform loader. Separately compiled providers now load through
+  ordinary Gradle Groovy compilation when source and transform loaders have distinct interface identities. Named
+  checks, applicability filters, and validated-annotation reflection use that same transform loader during effective
+  validation, including checks on annotations already present before contribution.
+
 ## 0.4.0 — 2026-08-12
 
 - Raised the baseline to Java 17 and replaced Groovy 2.4 support with isolated Groovy 3, 4, and 5 verification.
