@@ -1,10 +1,12 @@
 # Changes
 
-## 1.0.0 (unreleased)
+## 0.5.0 (unreleased)
 
-The next planned mainline release formalizes the completed 0.4 migration line. Its scope will include the remaining
-product-finish work—such as branding, versioned documentation, and aligned release-process hardening—through their
-separately owned issues. A future `0.4.1` is reserved for a maintenance release from a 0.4 release branch if needed.
+The next planned mainline release, 0.5.0, includes the delivered owner-aware `CheckContext` navigation and constructor
+migration (#55) and effective-declaration contributor SPI (#58). Version 1.0 remains reserved for the settled rename and
+technical-identity transition (#54) and separately owned product-finish work, including branding and versioned
+documentation; those deferred features are outside the 0.5.0 scope. A future `0.4.1` is reserved for a maintenance release
+from a 0.4 release branch if needed.
 
 - **Breaking:** Replaced the six-argument `CheckContext` constructor published in 0.4.0 with one owner-aware constructor.
   Manually constructed contexts must add the enclosing `MethodNode`, or `null` when none exists.
