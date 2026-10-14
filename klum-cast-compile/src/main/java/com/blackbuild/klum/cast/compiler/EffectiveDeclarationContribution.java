@@ -26,7 +26,12 @@ package com.blackbuild.klum.cast.compiler;
 import java.util.List;
 import java.util.Objects;
 
-/** One complete, immutable effective-annotation addition batch from a contributor. */
+/**
+ * One complete, immutable effective-annotation addition batch from a contributor.
+ *
+ * <p>Every annotation type in this batch must be absent from the declaration and from earlier batch entries. KlumCast
+ * rejects duplicate types instead of resolving them from member values or provenance.</p>
+ */
 public final class EffectiveDeclarationContribution {
 
     private static final EffectiveDeclarationContribution NONE = new EffectiveDeclarationContribution(List.of());

@@ -38,6 +38,8 @@ import com.blackbuild.klum.cast.spi.DiagnosticDefinition
 import org.codehaus.groovy.ast.ASTNode
 import org.codehaus.groovy.ast.AnnotationNode
 import org.codehaus.groovy.ast.ClassHelper
+import org.codehaus.groovy.ast.ClassNode
+import org.codehaus.groovy.ast.expr.ConstantExpression
 import org.codehaus.groovy.control.SourceUnit
 import org.codehaus.groovy.transform.ASTTransformation
 import org.codehaus.groovy.transform.GroovyASTTransformation
@@ -50,10 +52,12 @@ import java.lang.annotation.Target
 
 final class EffectiveDeclarationFixtureState {
     static final List<String> calls = []
+    static final Map<String, Integer> contributorCalls = [:].withDefault { 0 }
     static int localTransformRuns
 
     static void reset() {
         calls.clear()
+        contributorCalls.clear()
         localTransformRuns = 0
     }
 }
@@ -61,6 +65,8 @@ final class EffectiveDeclarationFixtureState {
 class EffectiveDeclarationFixtureContributor implements EffectiveDeclarationContributor {
     @Override
     EffectiveDeclarationContribution contribute(EffectiveDeclaration declaration) {
+        if (declaration.target instanceof ClassNode)
+            EffectiveDeclarationFixtureState.contributorCalls[declaration.target.name]++
         def additions = []
         declaration.annotations.each { AnnotationNode request ->
             switch (request.classNode.name) {
@@ -69,6 +75,9 @@ class EffectiveDeclarationFixtureContributor implements EffectiveDeclarationCont
                     break
                 case EffectiveInvalidRequest.name:
                     additions << effective(EffectiveInvalidValidated, request)
+                    break
+                case EffectiveUnrelatedInvalidRequest.name:
+                    additions << effective(EffectiveUnrelatedInvalidValidated, request)
                     break
                 case EffectiveOrRequest.name:
                     additions << effective(EffectiveOrValidated, request)
@@ -79,15 +88,37 @@ class EffectiveDeclarationFixtureContributor implements EffectiveDeclarationCont
                 case EffectiveLocalTransformRequest.name:
                     additions << effective(EffectiveLocalTransform, request)
                     break
+                case MemberDuplicateRequest.name:
+                    additions << effectiveWithValue(MemberValidated, request, 'first')
+                    additions << effectiveWithValue(MemberValidated, request, 'second')
+                    break
+                case FailingContributorRequest.name:
+                    throw new IllegalStateException('fixture contributor failed')
             }
         }
         additions ? new EffectiveDeclarationContribution(additions) : EffectiveDeclarationContribution.none()
     }
 
-    private static EffectiveAnnotation effective(Class<?> type, AnnotationNode request) {
+    static EffectiveAnnotation effective(Class<?> type, AnnotationNode request) {
         def annotation = new AnnotationNode(ClassHelper.make(type))
         annotation.setSourcePosition(request)
         new EffectiveAnnotation(annotation, "test fixture request @${request.classNode.nameWithoutPackage}", request)
+    }
+
+    private static EffectiveAnnotation effectiveWithValue(Class<?> type, AnnotationNode request, String value) {
+        def annotation = new AnnotationNode(ClassHelper.make(type))
+        annotation.addMember('value', new ConstantExpression(value))
+        annotation.setSourcePosition(request)
+        new EffectiveAnnotation(annotation, "test fixture request @${request.classNode.nameWithoutPackage}", request)
+    }
+}
+
+class EffectiveDeclarationSecondFixtureContributor implements EffectiveDeclarationContributor {
+    @Override
+    EffectiveDeclarationContribution contribute(EffectiveDeclaration declaration) {
+        def request = declaration.annotations.find { it.classNode.name == EffectiveSecondInvalidRequest.name }
+        request ? new EffectiveDeclarationContribution([EffectiveDeclarationFixtureContributor.effective(EffectiveInvalidValidated, request)])
+                : EffectiveDeclarationContribution.none()
     }
 }
 
@@ -101,6 +132,14 @@ class EffectiveDeclarationFixtureContributor implements EffectiveDeclarationCont
 
 @Retention(RetentionPolicy.RUNTIME)
 @Target(ElementType.TYPE)
+@interface EffectiveUnrelatedInvalidRequest {}
+
+@Retention(RetentionPolicy.RUNTIME)
+@Target(ElementType.TYPE)
+@interface EffectiveSecondInvalidRequest {}
+
+@Retention(RetentionPolicy.RUNTIME)
+@Target(ElementType.TYPE)
 @interface EffectiveOrRequest {}
 
 @Retention(RetentionPolicy.RUNTIME)
@@ -110,6 +149,14 @@ class EffectiveDeclarationFixtureContributor implements EffectiveDeclarationCont
 @Retention(RetentionPolicy.RUNTIME)
 @Target(ElementType.TYPE)
 @interface EffectiveLocalTransformRequest {}
+
+@Retention(RetentionPolicy.RUNTIME)
+@Target(ElementType.TYPE)
+@interface MemberDuplicateRequest {}
+
+@Retention(RetentionPolicy.RUNTIME)
+@Target(ElementType.TYPE)
+@interface FailingContributorRequest {}
 
 @Retention(RetentionPolicy.RUNTIME)
 @Target(ElementType.TYPE)
@@ -134,6 +181,18 @@ class EffectiveDeclarationFixtureContributor implements EffectiveDeclarationCont
 @KlumCastValidated
 @CheckBinding(EffectiveInvalidCheck)
 @interface EffectiveInvalidValidated {}
+
+@Retention(RetentionPolicy.RUNTIME)
+@Target(ElementType.TYPE)
+@KlumCastValidated
+@CheckBinding(EffectiveUnrelatedInvalidCheck)
+@interface EffectiveUnrelatedInvalidValidated {}
+
+@Retention(RetentionPolicy.RUNTIME)
+@Target(ElementType.TYPE)
+@interface MemberValidated {
+    String value()
+}
 
 @Retention(RetentionPolicy.RUNTIME)
 @Target(ElementType.ANNOTATION_TYPE)
@@ -169,6 +228,16 @@ class EffectiveDeclarationFixtureContributor implements EffectiveDeclarationCont
 @Target(ElementType.TYPE)
 @GroovyASTTransformationClass('com.blackbuild.klum.cast.validation.EffectiveLocalTransformProbe')
 @interface EffectiveLocalTransform {}
+
+@Retention(RetentionPolicy.RUNTIME)
+@Target(ElementType.TYPE)
+@GroovyASTTransformationClass('com.blackbuild.klum.cast.validation.NoOpReplayProbe')
+@interface NoOpReplay {}
+
+@Retention(RetentionPolicy.RUNTIME)
+@Target(ElementType.TYPE)
+@GroovyASTTransformationClass('com.blackbuild.klum.cast.validation.ExternalMutationProbe')
+@interface ExternalMutation {}
 
 class DirectCheck implements Check {
     @Override List<Diagnostic> check(CheckContext context) {
@@ -208,6 +277,16 @@ class EffectiveInvalidCheck implements Check {
     }
 }
 
+class EffectiveUnrelatedInvalidCheck implements Check {
+    @Override List<DiagnosticDefinition> getDiagnosticDefinitions() {
+        [DiagnosticDefinition.of('fixture.effective.unrelated')]
+    }
+
+    @Override List<Diagnostic> check(CheckContext context) {
+        [new Diagnostic('fixture.effective.unrelated', 'unrelated effective annotation is invalid', context.validatedAnnotation)]
+    }
+}
+
 class FilteredBranchCheck implements Check {
     @Override List<Diagnostic> check(CheckContext context) {
         throw new AssertionError('filtered branch ran')
@@ -236,6 +315,21 @@ class StatefulCheck implements Check {
 class EffectiveLocalTransformProbe implements ASTTransformation {
     @Override void visit(ASTNode[] nodes, SourceUnit source) {
         EffectiveDeclarationFixtureState.localTransformRuns++
+        new KlumCastTransformation().visit(nodes, source)
+    }
+}
+
+@GroovyASTTransformation
+class NoOpReplayProbe implements ASTTransformation {
+    @Override void visit(ASTNode[] nodes, SourceUnit source) {
+        new KlumCastTransformation().visit(nodes, source)
+    }
+}
+
+@GroovyASTTransformation
+class ExternalMutationProbe implements ASTTransformation {
+    @Override void visit(ASTNode[] nodes, SourceUnit source) {
+        nodes[1].addAnnotation(new AnnotationNode(ClassHelper.make(EffectiveValidValidated)))
         new KlumCastTransformation().visit(nodes, source)
     }
 }

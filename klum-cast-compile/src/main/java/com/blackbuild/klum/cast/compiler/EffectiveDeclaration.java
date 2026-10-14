@@ -33,8 +33,8 @@ import java.util.Objects;
  * Read-only compiler view of the declaration currently in KlumCast's validation window.
  *
  * <p>The returned Groovy AST node is supplied for inspection only. A contributor must return annotations through
- * {@link EffectiveDeclarationContribution} instead of changing this node. KlumCast detects annotation-list mutation
- * during the call and rejects it.</p>
+ * {@link EffectiveDeclarationContribution} instead of changing this node. KlumCast detects annotation-list and
+ * annotation-member mutation during the call and rejects it.</p>
  */
 public final class EffectiveDeclaration {
 

@@ -31,7 +31,8 @@ home and may move when the project adopts a final documentation strategy.
 Compiler integrations that need to add a bounded, authorized batch of effective annotations before validation may
 provide an `EffectiveDeclarationContributor` through Java service loading from `klum-cast-compile`. This contract is
 for compiler integration—not check authors—and leaves traversal, validation state, filters/composition, diagnostics,
-and rendering with KlumCast.
+and rendering with KlumCast. A declaration receives one complete handoff: duplicate annotation types are rejected,
+unchanged revisits are no-ops, and later annotation mutation is rejected rather than incrementally reconciled.
 
 The [shared orientation](docs/user/README.md#dependencies-by-role) gives the exact Gradle and Maven scopes. Check writers
 must also select the Groovy compiler dependency matching their Groovy generation; the SPI deliberately does not select

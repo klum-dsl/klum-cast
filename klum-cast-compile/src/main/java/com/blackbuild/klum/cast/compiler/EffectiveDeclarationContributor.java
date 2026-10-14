@@ -32,6 +32,14 @@ package com.blackbuild.klum.cast.compiler;
  * validation, diagnostic aggregation, and rendering. Providers must not validate annotations themselves, schedule
  * compiler work, or mutate the declaration directly or after this method returns.</p>
  *
+ * <p>KlumCast invokes providers once for a declaration's handoff. It attaches every returned batch and validates the
+ * resulting declaration once. Later visits of the unchanged declaration do nothing. After that finalization, changing
+ * the declaration's annotations is unsupported and rejected rather than reconciled incrementally.</p>
+ *
+ * <p>Each returned annotation type must be absent from the declaration and from all earlier additions in the handoff.
+ * KlumCast rejects duplicates at this boundary, regardless of provider or member values; it never silently merges,
+ * replaces, or ignores an addition.</p>
+ *
  * <p>This is a deliberately narrow compiler-integration seam. It is not a general transformation scheduler or an
  * observer API.</p>
  */
@@ -39,7 +47,7 @@ package com.blackbuild.klum.cast.compiler;
 public interface EffectiveDeclarationContributor {
 
     /**
-     * Returns the complete addition batch for one declaration.
+     * Returns the complete addition batch for one declaration handoff.
      *
      * @param declaration read-only view of the declaration being visited
      * @return additions and their origins, or {@link EffectiveDeclarationContribution#none()}

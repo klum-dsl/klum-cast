@@ -97,6 +97,13 @@ public class ValidationHandler {
         return validateEffectiveAnnotation(annotationToValidate, target, enclosingExecutable);
     }
 
+    /**
+     * Validates one annotation as part of KlumCast's first, declaration-level effective validation pass.
+     *
+     * <p>This intentionally bypasses the per-annotation {@link #alreadyValidated(AnnotationNode)} guard. Ordinary
+     * callers continue to use {@link #validateAnnotation(AnnotationNode, AnnotatedNode)}; the declaration handoff
+     * state in {@link KlumCastTransformation} prevents a completed effective declaration from being revalidated.</p>
+     */
     static List<Diagnostic> validateEffectiveAnnotation(AnnotationNode annotationToValidate, AnnotatedNode target,
                                                          MethodNode enclosingExecutable) {
         if (!annotationToValidate.getClassNode().isResolved()) {

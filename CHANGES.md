@@ -13,7 +13,8 @@ separately owned issues. A future `0.4.1` is reserved for a maintenance release 
   manually constructed contexts without an owner retain deterministic empty navigation.
 - Added the compile-artifact `EffectiveDeclarationContributor` service contract for one complete, provenance-carrying
   effective-annotation batch before KlumCast validates a declaration. KlumCast retains final declaration state,
-  rechecks affected constraints as one effective set, and emits each resulting diagnostic once.
+  validates the resulting effective set once, rejects duplicate contributed annotation types, and emits each resulting
+  diagnostic once.
 
 ## 0.4.0 — 2026-08-12
 

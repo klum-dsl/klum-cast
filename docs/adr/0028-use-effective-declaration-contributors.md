@@ -8,9 +8,10 @@ final declaration state, and retains ownership of constraint discovery and execu
 composition, diagnostic deduplication, and compiler rendering.
 
 This avoids relying on order between independent global transformations. It also prevents callers from treating
-per-annotation `VALIDATED` metadata or `ValidationHandler` as an integration protocol: when a batch changes the
-effective set, KlumCast reconsiders all validated annotations on that declaration; when the resulting state is
-unchanged, it does nothing.
+per-annotation `VALIDATED` metadata or `ValidationHandler` as an integration protocol: KlumCast performs one final
+effective-declaration validation pass, then unchanged revisits do nothing. The final state is closed; a later
+annotation mutation is rejected rather than incrementally reconciled. Duplicate contributed annotation types are also
+rejected at the handoff boundary rather than being merged or silently ignored.
 
 The contributor supplies additions and their origin only. It cannot schedule arbitrary work, replace KlumCast
 traversal, directly mutate the declaration, or change it after the handoff. The contract is framework-neutral and does

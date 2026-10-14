@@ -24,6 +24,7 @@
 package com.blackbuild.klum.cast.validation
 
 import org.codehaus.groovy.control.MultipleCompilationErrorsException
+import org.codehaus.groovy.GroovyBugError
 
 class EffectiveDeclarationContributorTest extends AstSpec {
 
@@ -73,6 +74,7 @@ class InvalidEffectiveTarget {}
         failure.message.count('[fixture.effective.invalid]') == 1
         failure.message.count('[fixture.effective.co-annotation]') == 1
         failure.message.contains('Effective annotation origin: test fixture request @EffectiveInvalidRequest')
+        failure.message.contains('Effective declaration context: test fixture request @EffectiveInvalidRequest')
     }
 
     def "effective annotations retain normal filter and OR handling"() {
@@ -102,5 +104,126 @@ class LocalTransformTarget {}
         then:
         EffectiveDeclarationFixtureState.localTransformRuns == 1
         EffectiveDeclarationFixtureState.calls == ['stateful']
+        EffectiveDeclarationFixtureState.contributorCalls.LocalTransformTarget == 1
+    }
+
+    def "a no-op batch is not requested again for an unchanged declaration"() {
+        when:
+        createClass '''
+import com.blackbuild.klum.cast.validation.NoOpReplay
+
+@NoOpReplay
+class NoOpTarget {}
+'''
+
+        then:
+        EffectiveDeclarationFixtureState.contributorCalls.NoOpTarget == 1
+    }
+
+    def "a contributor cannot duplicate an explicit annotation"() {
+        when:
+        createClass '''
+import com.blackbuild.klum.cast.validation.EffectiveInvalidRequest
+import com.blackbuild.klum.cast.validation.EffectiveInvalidValidated
+
+@EffectiveInvalidValidated
+@EffectiveInvalidRequest
+class ExplicitDuplicateTarget {}
+'''
+
+        then:
+        def failure = thrown(GroovyBugError)
+        failure.cause.message.contains('attempted to add duplicate annotation type')
+        failure.cause.message.contains(EffectiveInvalidValidated.name)
+    }
+
+    def "multiple contributors cannot add the same annotation type"() {
+        when:
+        createClass '''
+import com.blackbuild.klum.cast.validation.EffectiveInvalidRequest
+import com.blackbuild.klum.cast.validation.EffectiveSecondInvalidRequest
+
+@EffectiveInvalidRequest
+@EffectiveSecondInvalidRequest
+class ContributorDuplicateTarget {}
+'''
+
+        then:
+        def failure = thrown(GroovyBugError)
+        failure.cause.message.contains('EffectiveDeclarationSecondFixtureContributor')
+        failure.cause.message.contains(EffectiveInvalidValidated.name)
+    }
+
+    def "same-type effective annotations with different member values are rejected"() {
+        when:
+        createClass '''
+import com.blackbuild.klum.cast.validation.MemberDuplicateRequest
+
+@MemberDuplicateRequest
+class DifferentMembersTarget {}
+'''
+
+        then:
+        def failure = thrown(GroovyBugError)
+        failure.cause.message.contains('duplicate annotation type')
+        failure.cause.message.contains(MemberValidated.name)
+    }
+
+    def "post-handoff annotation mutation is rejected"() {
+        when:
+        createClass '''
+import com.blackbuild.klum.cast.validation.ExternalMutation
+
+@ExternalMutation
+class MutatedTarget {}
+'''
+
+        then:
+        def failure = thrown(MultipleCompilationErrorsException)
+        failure.message.contains('must not change after KlumCast completes effective-declaration validation')
+    }
+
+    def "contributor failure does not leak into a later compilation"() {
+        when:
+        createClass '''
+import com.blackbuild.klum.cast.validation.FailingContributorRequest
+
+@FailingContributorRequest
+class FailedContributorTarget {}
+'''
+
+        then:
+        def failure = thrown(GroovyBugError)
+        failure.cause.message == 'fixture contributor failed'
+
+        when:
+        createClass '''
+import com.blackbuild.klum.cast.validation.DirectValidatedAnnotation
+
+@DirectValidatedAnnotation
+class LaterTarget {}
+'''
+
+        then:
+        noExceptionThrown()
+        EffectiveDeclarationFixtureState.calls == ['direct']
+    }
+
+    def "direct effective diagnostics keep only their own provenance"() {
+        when:
+        createClass '''
+import com.blackbuild.klum.cast.validation.EffectiveInvalidRequest
+import com.blackbuild.klum.cast.validation.EffectiveUnrelatedInvalidRequest
+
+@EffectiveInvalidRequest
+@EffectiveUnrelatedInvalidRequest
+class ProvenanceTarget {}
+'''
+
+        then:
+        def failure = thrown(MultipleCompilationErrorsException)
+        failure.message.count('Effective annotation origin: test fixture request @EffectiveInvalidRequest') == 1
+        failure.message.count('Effective annotation origin: test fixture request @EffectiveUnrelatedInvalidRequest') == 1
+        !failure.message.contains('Effective declaration context:')
     }
 }
