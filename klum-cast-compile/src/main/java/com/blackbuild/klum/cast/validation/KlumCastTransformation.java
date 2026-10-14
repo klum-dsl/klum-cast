@@ -25,9 +25,14 @@ package com.blackbuild.klum.cast.validation;
 
 import com.blackbuild.klum.cast.KlumCastValidated;
 import com.blackbuild.klum.cast.KlumCastValidator;
+import com.blackbuild.klum.cast.compiler.EffectiveAnnotation;
+import com.blackbuild.klum.cast.compiler.EffectiveDeclaration;
+import com.blackbuild.klum.cast.compiler.EffectiveDeclarationContribution;
+import com.blackbuild.klum.cast.compiler.EffectiveDeclarationContributor;
 import com.blackbuild.klum.cast.spi.CheckBinding;
 import com.blackbuild.klum.cast.spi.Diagnostic;
 import org.codehaus.groovy.ast.*;
+import org.codehaus.groovy.ast.expr.Expression;
 import org.codehaus.groovy.control.CompilePhase;
 import org.codehaus.groovy.control.SourceUnit;
 import org.codehaus.groovy.transform.AbstractASTTransformation;
@@ -36,7 +41,12 @@ import org.codehaus.groovy.transform.GroovyASTTransformation;
 import static org.codehaus.groovy.ast.ClassHelper.make;
 
 import java.lang.annotation.Annotation;
+import java.util.Comparator;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.ServiceLoader;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -51,9 +61,17 @@ public class KlumCastTransformation extends AbstractASTTransformation implements
     static final ClassNode KLUM_CAST_VALIDATOR = make(KlumCastValidator.class);
     static final ClassNode CHECK_BINDING = make(CheckBinding.class);
 
+    private static final Object EFFECTIVE_DECLARATION_STATE = KlumCastTransformation.class.getName() + ".effectiveDeclarationState";
+
+    private List<EffectiveDeclarationContributor> contributors = List.of();
+
     @Override
     public void visit(ASTNode[] nodes, SourceUnit source) {
         this.sourceUnit = source;
+        contributors = ServiceLoader.load(EffectiveDeclarationContributor.class, source.getClassLoader()).stream()
+                .map(ServiceLoader.Provider::get)
+                .sorted(Comparator.comparing(contributor -> contributor.getClass().getName()))
+                .collect(Collectors.toList());
         source.getAST().getClasses().forEach(this::visit);
     }
 
@@ -88,13 +106,87 @@ public class KlumCastTransformation extends AbstractASTTransformation implements
     }
 
     private void visitAnnotations(AnnotatedNode node, MethodNode enclosingExecutable) {
+        EffectiveDeclarationState state = effectiveState(node);
+        if (state != null) {
+            if (state.matches(node.getAnnotations())) return;
+            throw new IllegalStateException("Annotations on a declaration must not change after KlumCast completes "
+                    + "effective-declaration validation.");
+        }
+        Map<AnnotationNode, EffectiveAnnotation> effectiveAnnotations = new LinkedHashMap<>();
+        contributors.forEach(contributor -> applyContribution(contributor, node, effectiveAnnotations));
+
         for (AnnotationNode annotation : node.getAnnotations())
             if (isKlumCastAnnotation(annotation))
-                ValidationHandler.validateAnnotation(annotation, node, enclosingExecutable)
-                        .forEach(diagnostic -> addError(renderDiagnostic(diagnostic), diagnostic.getPrimaryNode()));
+                ValidationHandler.validateEffectiveAnnotation(annotation, node, enclosingExecutable)
+                        .forEach(diagnostic -> addError(renderDiagnostic(diagnostic, effectiveAnnotations), diagnostic.getPrimaryNode()));
+        node.setNodeMetaData(EFFECTIVE_DECLARATION_STATE, new EffectiveDeclarationState(node.getAnnotations()));
     }
 
-    private static String renderDiagnostic(Diagnostic diagnostic) {
+    private void applyContribution(EffectiveDeclarationContributor contributor, AnnotatedNode target,
+                                   Map<AnnotationNode, EffectiveAnnotation> effectiveAnnotations) {
+        List<AnnotationNode> before = List.copyOf(target.getAnnotations());
+        List<Map<String, Expression>> beforeMembers = memberStates(before);
+        EffectiveDeclarationContribution contribution = contributor.contribute(new EffectiveDeclaration(target, before));
+        if (contribution == null) {
+            throw new IllegalStateException("Effective declaration contributor " + contributor.getClass().getName()
+                    + " returned null instead of a complete contribution batch.");
+        }
+        if (!sameAnnotationState(before, beforeMembers, target.getAnnotations())) {
+            throw new IllegalStateException("Effective declaration contributor " + contributor.getClass().getName()
+                    + " must return additions instead of mutating a declaration.");
+        }
+        for (EffectiveAnnotation effectiveAnnotation : contribution.getAnnotations()) {
+            if (effectiveAnnotation == null) {
+                throw new IllegalStateException("Effective declaration contributor " + contributor.getClass().getName()
+                        + " returned a null effective annotation.");
+            }
+            AnnotationNode annotation = effectiveAnnotation.getAnnotation();
+            rejectDuplicateContribution(contributor, target.getAnnotations(), annotation);
+            target.addAnnotation(annotation);
+            effectiveAnnotations.put(annotation, effectiveAnnotation);
+        }
+    }
+
+    private static EffectiveDeclarationState effectiveState(AnnotatedNode node) {
+        return (EffectiveDeclarationState) node.getNodeMetaData(EFFECTIVE_DECLARATION_STATE);
+    }
+
+    private static boolean sameAnnotationNodes(List<AnnotationNode> left, List<AnnotationNode> right) {
+        if (left.size() != right.size()) return false;
+        for (int index = 0; index < left.size(); index++) if (left.get(index) != right.get(index)) return false;
+        return true;
+    }
+
+    private static boolean sameAnnotationState(List<AnnotationNode> annotations, List<Map<String, Expression>> members,
+                                               List<AnnotationNode> current) {
+        if (!sameAnnotationNodes(annotations, current)) return false;
+        List<Map<String, Expression>> currentMembers = memberStates(current);
+        if (members.size() != currentMembers.size()) return false;
+        for (int index = 0; index < members.size(); index++) {
+            Map<String, Expression> expected = members.get(index);
+            Map<String, Expression> actual = currentMembers.get(index);
+            if (!expected.keySet().equals(actual.keySet())) return false;
+            for (String name : expected.keySet()) if (expected.get(name) != actual.get(name)) return false;
+        }
+        return true;
+    }
+
+    private static void rejectDuplicateContribution(EffectiveDeclarationContributor contributor,
+                                                    List<AnnotationNode> annotations, AnnotationNode candidate) {
+        boolean duplicate = annotations.stream().anyMatch(annotation -> annotation.getClassNode().getName()
+                .equals(candidate.getClassNode().getName()));
+        if (duplicate) {
+            throw new IllegalStateException("Effective declaration contributor " + contributor.getClass().getName()
+                    + " attempted to add duplicate annotation type " + candidate.getClassNode().getName() + ".");
+        }
+    }
+
+    private static List<Map<String, Expression>> memberStates(List<AnnotationNode> annotations) {
+        return annotations.stream().map(annotation -> Map.copyOf(annotation.getMembers())).collect(Collectors.toList());
+    }
+
+    private static String renderDiagnostic(Diagnostic diagnostic,
+                                           Map<AnnotationNode, EffectiveAnnotation> effectiveAnnotations) {
         StringBuilder rendered = new StringBuilder("[").append(diagnostic.getCode()).append("] ")
                 .append(diagnostic.getMessage());
         diagnostic.getBinding().ifPresent(binding -> rendered.append("\nValidation binding: ")
@@ -110,7 +202,34 @@ public class KlumCastTransformation extends AbstractASTTransformation implements
                     .map(node -> node.getLineNumber() + ":" + node.getColumnNumber())
                     .collect(Collectors.joining(", ")));
         }
+        EffectiveAnnotation effectiveAnnotation = diagnostic.getPrimaryNode() instanceof AnnotationNode
+                ? effectiveAnnotations.get(diagnostic.getPrimaryNode()) : null;
+        if (effectiveAnnotation != null) {
+            rendered.append("\nEffective annotation origin: ").append(renderOrigin(effectiveAnnotation));
+        } else if (!effectiveAnnotations.isEmpty()) {
+            rendered.append("\nEffective declaration context: ").append(effectiveAnnotations.values().stream()
+                    .map(KlumCastTransformation::renderOrigin).collect(Collectors.joining(", ")));
+        }
         return rendered.toString();
+    }
+
+    private static String renderOrigin(EffectiveAnnotation annotation) {
+        return annotation.getOrigin() + " (" + annotation.getOriginNode().getLineNumber() + ":"
+                + annotation.getOriginNode().getColumnNumber() + ")";
+    }
+
+    private static final class EffectiveDeclarationState {
+        private final List<AnnotationNode> annotations;
+        private final List<Map<String, Expression>> annotationMembers;
+
+        private EffectiveDeclarationState(List<AnnotationNode> annotations) {
+            this.annotations = List.copyOf(annotations);
+            this.annotationMembers = memberStates(this.annotations);
+        }
+
+        private boolean matches(List<AnnotationNode> current) {
+            return sameAnnotationState(annotations, annotationMembers, current);
+        }
     }
 
     private boolean isKlumCastAnnotation(AnnotationNode annotation) {

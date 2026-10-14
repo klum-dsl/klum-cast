@@ -24,6 +24,9 @@ testing {
                     java {
                         setSrcDirs(['src/test/java'])
                     }
+                    resources {
+                        setSrcDirs(['src/test/resources'])
+                    }
                 }
 
                 dependencies {

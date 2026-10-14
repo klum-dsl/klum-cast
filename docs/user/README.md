@@ -115,8 +115,15 @@ declared classes, constructors, methods, parameters, and fields. It follows vali
 properties are not visited separately because their field or accessor annotations are already in the scan.
 
 A consumer transformation that depends on successful validation must perform its main mutation during
-`CANONICALIZATION` or later. Ordering against another `SEMANTIC_ANALYSIS` transformation is not guaranteed; same-phase
-coordination needs an explicit mechanism.
+`CANONICALIZATION` or later. Ordering against another `SEMANTIC_ANALYSIS` transformation is not guaranteed. A compiler
+integration that must supply one authorized annotation-addition batch before KlumCast validates a declaration can
+register an `EffectiveDeclarationContributor` from the compile artifact with Java service loading. That narrow
+handoff is not a transformation scheduler: KlumCast retains traversal, validation state, constraint execution, and
+diagnostic rendering. KlumCast invokes contributors once for that declaration, attaches their complete batches, and
+validates the resulting effective declaration once. Unchanged revisits do not invoke contributors again. An addition
+whose annotation type is already present (including one from another contributor) is rejected rather than merged or
+ignored, regardless of member values. Annotation changes after the completed handoff are likewise rejected; KlumCast
+does not incrementally reconcile a finalized declaration.
 
 Annotations, checks, filters, and consuming transformations may be authored in Java or Groovy. The validated annotation
 must be used in Groovy source for KlumCast's Groovy transformation to see its target. This validation adds no runtime

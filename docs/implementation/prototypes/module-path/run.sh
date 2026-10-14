@@ -56,6 +56,7 @@ diff -u <(printf '%s\n' \
     com.blackbuild.klum.cast \
     com.blackbuild.klum.cast.checks \
     com.blackbuild.klum.cast.checks.impl \
+    com.blackbuild.klum.cast.compiler \
     com.blackbuild.klum.cast.compiler.internal.checks \
     com.blackbuild.klum.cast.spi \
     com.blackbuild.klum.cast.validation) "$work_dir/actual-packages.txt"
@@ -64,11 +65,18 @@ classes="$work_dir/classpath-classes"
 mkdir -p "$classes"
 find "$fixture_dir/src" -name '*.java' ! -name 'module-info.java' -print0 | \
     xargs -0 "$java_bin/javac" -cp "$classpath" -d "$classes"
+mkdir -p "$classes/META-INF/services"
+printf '%s\n' fixture.contributor.TypedContributor > \
+    "$classes/META-INF/services/com.blackbuild.klum.cast.compiler.EffectiveDeclarationContributor"
 
 classpath_output="$("$java_bin/java" -cp "$classpath:$classes" org.codehaus.groovy.tools.FileSystemCompiler -d "$classes" "$fixture_dir/src/fixture/use/ConsumerTarget.groovy" 2>&1)"
 printf '%s\n' "$classpath_output"
 grep -F 'TYPED-CHECK-RAN' <<<"$classpath_output"
 grep -F 'NAME-CHECK-RAN' <<<"$classpath_output"
+
+effective_classpath_output="$("$java_bin/java" -cp "$classpath:$classes" org.codehaus.groovy.tools.FileSystemCompiler -d "$classes" "$fixture_dir/src/fixture/use/EffectiveConsumerTarget.groovy" 2>&1)"
+printf '%s\n' "$effective_classpath_output"
+grep -F 'TYPED-CHECK-RAN' <<<"$effective_classpath_output"
 
 module_description="$work_dir/groovy-module.txt"
 "$java_bin/jar" --describe-module --file "$GROOVY_JAR" > "$module_description" 2>&1 || true
@@ -89,13 +97,13 @@ module_sources="$work_dir/module-src"
 modules="$work_dir/modules"
 mkdir -p "$module_sources"
 cp -R "$fixture_dir/src/consumer.named.implementation" "$fixture_dir/src/consumer.named.metadata" \
-      "$fixture_dir/src/consumer.typed" "$module_sources/"
+      "$fixture_dir/src/consumer.typed" "$fixture_dir/src/consumer.contributor" "$module_sources/"
 for module_info in "$module_sources"/*/module-info.java; do
     sed "s/@GROOVY_MODULE@/$groovy_module/g" "$module_info" > "$module_info.tmp"
     mv "$module_info.tmp" "$module_info"
 done
 "$java_bin/javac" --module-path "$module_path" --module-source-path "$module_sources" -d "$modules" \
-    --module consumer.typed,consumer.named.metadata,consumer.named.implementation
+    --module consumer.typed,consumer.named.metadata,consumer.named.implementation,consumer.contributor
 
 module_output="$("$java_bin/java" --module-path "$module_path:$modules" --add-modules ALL-MODULE-PATH \
     -m "$groovy_module/org.codehaus.groovy.tools.FileSystemCompiler" -d "$modules" \
@@ -103,4 +111,10 @@ module_output="$("$java_bin/java" --module-path "$module_path:$modules" --add-mo
 printf '%s\n' "$module_output"
 grep -F 'TYPED-CHECK-RAN' <<<"$module_output"
 grep -F 'NAME-CHECK-RAN' <<<"$module_output"
+
+effective_module_output="$("$java_bin/java" --module-path "$module_path:$modules" --add-modules ALL-MODULE-PATH \
+    -m "$groovy_module/org.codehaus.groovy.tools.FileSystemCompiler" -d "$modules" \
+    "$fixture_dir/src/fixture/use/EffectiveConsumerTarget.groovy" 2>&1)"
+printf '%s\n' "$effective_module_output"
+grep -F 'TYPED-CHECK-RAN' <<<"$effective_module_output"
 echo "Module-path feasibility passed for Groovy $GROOVY_VERSION using $groovy_module."
