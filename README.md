@@ -4,7 +4,7 @@ KlumCast validates uses of annotations during Groovy compilation. It runs reusab
 AST transformation performs its main work, and reports constraint violations as source-positioned compiler diagnostics.
 It is not a runtime model-validation library.
 
-KlumCast 0.4 requires Java 17 and supports Groovy 3, 4, and 5.
+KlumCast 0.5.0 requires Java 17 and supports Groovy 3, 4, and 5.
 
 ## Start with your role
 
@@ -43,9 +43,11 @@ one transitively.
 
 - [Built-in validation annotations](klum-cast-annotations/src/main/java/com/blackbuild/klum/cast/checks)
 - [Supported SPI source](klum-cast-spi/src/main/java/com/blackbuild/klum/cast/spi)
+- [0.5.0 constructor migration](docs/user/check-writer.md#navigate-from-a-parameter-to-its-declaration)
 - [0.4 migration guide](docs/migration/0.4.md)
 - [Release-facing changes](CHANGES.md)
 - [Architecture decisions](docs/adr/README.md)
 
-The migration guide is for upgrading existing integrations; the three role journeys above are the single onboarding
-route for new use.
+Existing 0.4 integrations that construct `CheckContext` must follow the 0.5.0 constructor migration. Integrations
+upgrading from before 0.4 should also follow the 0.4 migration guide. The three role journeys above are the single
+onboarding route for new use.

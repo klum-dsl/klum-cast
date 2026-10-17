@@ -37,7 +37,8 @@ Prefer typed `@CheckBinding(MyCheck.class)` when the validation annotation can c
 compiler verifies the type, and nested or co-located implementations are convenient. Use the name binding
 `@KlumCastValidator("example.SplitCheck")` when a lightweight metadata module must compile independently of the
 implementation module. Name binding defers class resolution until validation runs; a missing or incompatible class is a
-technical failure. The deprecated raw `KlumCastValidator.type()` member is only a 0.4 migration bridge.
+technical failure. The deprecated raw `KlumCastValidator.type()` member remains a migration bridge scheduled for removal
+in 1.0.
 
 ## 2. Implement a stateless check
 
@@ -63,7 +64,7 @@ Both accessors return `Optional`. They are empty for non-parameter targets and f
 enclosing-executable argument is `null`, because a standalone `Parameter` does not identify its owner. Check and filter
 implementations should therefore branch on the optional value rather than scanning the `SourceUnit` to recover ownership.
 
-KlumCast 1.0 replaces the six-argument `CheckContext` constructor published in 0.4.0 with the owner-aware constructor.
+KlumCast 0.5.0 replaces the six-argument `CheckContext` constructor published in 0.4.0 with the owner-aware constructor.
 Code that manually constructs a context must add the enclosing `MethodNode` as the final argument, or `null` when no
 enclosing executable exists. Checks and filters that only receive a context do not require this constructor migration.
 
