@@ -48,7 +48,7 @@ nor a failure.
 
 ## Delivered boolean composition
 
-`@OneCheckMustMatch` is the only delivered 0.4 boolean strategy. It provides OR over validation-annotation branches:
+`@OneCheckMustMatch` is the only delivered 0.5.0 boolean strategy. It provides OR over validation-annotation branches:
 
 ```java
 @Target(ElementType.ANNOTATION_TYPE)
@@ -71,7 +71,7 @@ covers passing, all-failing, filtered, nested, zero-branch, diagnostic-ordering,
 source declares branches directly on the composed annotation. Annotation-valued members on `@OneCheckMustMatch` remain
 only as a deprecated binary migration bridge for old declarations; recompile them using direct branch annotations.
 
-There is no public AND, XOR, or conditional composition syntax in 0.4. Do not infer one from the accepted outcome model.
+There is no public AND, XOR, or conditional composition syntax in 0.5.0. Do not infer one from the accepted outcome model.
 
 ## Java and Groovy declaration shape
 

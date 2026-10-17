@@ -63,7 +63,7 @@ ordinary bad annotation usage.
 
 ## Dependencies by role
 
-KlumCast 0.4 requires Java 17 and supports Groovy 3, 4, and 5.
+KlumCast 0.5.0 requires Java 17 and supports Groovy 3, 4, and 5.
 
 | Artifact or dependency | Gradle scope | Maven scope | Add it when |
 |---|---|---|---|
@@ -135,5 +135,6 @@ model behavior.
 ## Continue
 
 Follow the [check writer](check-writer.md), [check aggregator](check-aggregator.md), or
-[check user](check-user.md) journey. Existing 0.3 integrations should also read the
-[0.4 migration guide](../migration/0.4.md).
+[check user](check-user.md) journey. Existing 0.4 integrations that construct `CheckContext` must follow the
+[0.5.0 constructor migration](check-writer.md#navigate-from-a-parameter-to-its-declaration). Existing 0.3 integrations
+should also read the [0.4 migration guide](../migration/0.4.md).

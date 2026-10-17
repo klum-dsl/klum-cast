@@ -1,12 +1,11 @@
 # Changes
 
-## 0.5.0 (unreleased)
+## 0.5.0 — 2026-10-17
 
-The next planned mainline release, 0.5.0, includes the delivered owner-aware `CheckContext` navigation and constructor
-migration (#55) and effective-declaration contributor SPI (#58). Version 1.0 remains reserved for the settled rename and
-technical-identity transition (#54) and separately owned product-finish work, including branding and versioned
-documentation; those deferred features are outside the 0.5.0 scope. A future `0.4.1` is reserved for a maintenance release
-from a 0.4 release branch if needed.
+KlumCast 0.5.0 includes owner-aware `CheckContext` navigation and constructor migration (#55) and the
+effective-declaration contributor SPI (#58). The rename and technical-identity transition (#54), visual branding (#53),
+versioned documentation and Javadocs (#47), and AST-native same-source annotation validation (#57) remain deferred to
+1.0 or later. A future `0.4.1` is reserved for a maintenance release from a 0.4 release branch if needed.
 
 - **Breaking:** Replaced the six-argument `CheckContext` constructor published in 0.4.0 with one owner-aware constructor.
   Manually constructed contexts must add the enclosing `MethodNode`, or `null` when none exists.
@@ -17,7 +16,6 @@ from a 0.4 release branch if needed.
   effective-annotation batch before KlumCast validates a declaration. KlumCast retains final declaration state,
   validates the resulting effective set once, rejects duplicate contributed annotation types, and emits each resulting
   diagnostic once.
-
 - Corrected contributor discovery to use Groovy's AST-transform loader. Separately compiled providers now load through
   ordinary Gradle Groovy compilation when source and transform loaders have distinct interface identities. Named
   checks, applicability filters, and validated-annotation reflection use that same transform loader during effective
